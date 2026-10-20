@@ -16,6 +16,8 @@
 # misc
 .DS_Store
 *.pem
+*.exe
+cloudflared.exe
 
 # debug
 npm-debug.log*

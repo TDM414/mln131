@@ -10,6 +10,7 @@ import {
 } from '../../data/memeAvatars';
 import { sync } from '../../lib/syncEngine';
 import { sound } from '../../lib/audioSynthesizer';
+import { mergeMonotonicState } from '../../lib/monotonicSync';
 import { GameShowState, Player } from '../../lib/types';
 import Round1Play from '../../components/Round1Play';
 import Round2Play from '../../components/Round2Play';
@@ -107,9 +108,10 @@ function MobileControllerContent() {
     sync.setRoom(roomCode);
     sync.startPolling(false); // Mobile client polling (700ms)
 
+    // Listen to Full State Updates with Monotonic Guard (prevents rollback to LOBBY or previous rounds)
     const unsubState = sync.on('STATE_UPDATE', (data: any) => {
       if (data) {
-        setGameState(data);
+        setGameState((prev) => mergeMonotonicState(prev, data, false));
         // Check debuff for this player
         if (playerId && data.players && data.players[playerId]) {
           const debuffs = data.players[playerId].r4Debuffs;

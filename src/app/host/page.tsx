@@ -11,6 +11,7 @@ import {
 } from '../../lib/types';
 import { sync } from '../../lib/syncEngine';
 import { sound } from '../../lib/audioSynthesizer';
+import { mergeMonotonicState } from '../../lib/monotonicSync';
 import HostLobby from '../../components/HostLobby';
 import DevBotSimulator from '../../components/DevBotSimulator';
 import DanmakuCanvas from '../../components/DanmakuCanvas';
@@ -102,22 +103,18 @@ export default function HostProjectorPage() {
   // Audio Context Resume state
   const [hasInteracted, setHasInteracted] = useState<boolean>(false);
 
+  // Reset guard ref to allow manual reset to LOBBY
+  const isResettingRef = useRef<boolean>(false);
+
   // Sync Engine Setup
   useEffect(() => {
     sync.setRoom(roomCode);
     sync.startPolling(true); // Host mode (350ms delta poll)
 
-    // Listen to Full State Updates
+    // Listen to Full State Updates with Monotonic Guard (prevents Vercel serverless multi-instance rollback)
     const unsubState = sync.on('STATE_UPDATE', (data: any) => {
       if (data) {
-        setGameState((prev) => ({
-          ...prev,
-          ...data,
-          players: data.players || prev.players,
-          mode: data.mode || prev.mode,
-          status: data.status || prev.status,
-          currentRoundPhase: data.currentRoundPhase || prev.currentRoundPhase,
-        }));
+        setGameState((prev) => mergeMonotonicState(prev, data, isResettingRef.current));
       }
     });
 
@@ -185,6 +182,7 @@ export default function HostProjectorPage() {
 
   // Reset Game back to Lobby
   const handleResetGame = () => {
+    isResettingRef.current = true;
     sound.playCorrectChime();
     setGameState((prev) => ({
       ...prev,
@@ -192,10 +190,14 @@ export default function HostProjectorPage() {
       currentRoundPhase: 'LOBBY_WAITING',
     }));
     sync.resetGame();
+    setTimeout(() => {
+      isResettingRef.current = false;
+    }, 2500);
   };
 
   // Return to Hub preserving all player scores
   const handleReturnToHub = () => {
+    isResettingRef.current = true;
     sound.playCorrectChime();
     setGameState((prev) => ({
       ...prev,
@@ -204,6 +206,9 @@ export default function HostProjectorPage() {
     }));
     sync.setGameStatus('LOBBY');
     sync.setRoundPhase('LOBBY_WAITING');
+    setTimeout(() => {
+      isResettingRef.current = false;
+    }, 2500);
   };
 
   // Sound Controls
