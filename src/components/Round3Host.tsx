@@ -574,136 +574,113 @@ export default function Round3Host({
               {/* Arena Background Grid */}
               <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
 
-              {/* Top Bunkers: Scores & Percentages */}
+              {/* Top Bunkers: Secret Ballot (Locked Percentages & Counts) */}
               <div className="grid grid-cols-2 gap-4 items-center mb-6 relative z-10">
-                {/* Left Bunker: Phe A */}
-                <div
-                  className={`p-4 rounded-2xl border-3 border-black transition-all ${
-                    tally.percentA > tally.percentB
-                      ? 'bg-cyber-cyan/25 border-cyber-cyan shadow-[0_0_20px_rgba(6,214,160,0.4)] scale-102'
-                      : 'bg-slate-950/80 border-slate-800'
-                  }`}
-                >
+                {/* Left Bunker: Phe A (Secret) */}
+                <div className="p-4 rounded-2xl border-3 border-black bg-slate-950/80 border-slate-800 transition-all">
                   <div className="flex items-center justify-between">
                     <span className="px-2.5 py-1 bg-cyber-cyan text-black font-black text-xs rounded-lg uppercase">
                       🛡️ PHE A
                     </span>
-                    <span className="text-3xl font-black text-cyber-cyan font-mono">
-                      {tally.percentA}%
-                    </span>
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-black/70 rounded-xl border border-cyber-cyan/50 text-cyber-cyan">
+                      <span className="text-sm animate-pulse">🔒</span>
+                      <span className="text-xl font-black font-mono tracking-widest">?? %</span>
+                    </div>
                   </div>
-                  <div className="text-lg font-black text-white mt-1">
-                    {tally.countA} <span className="text-xs text-slate-400 font-normal">phiếu bầu</span>
+                  <div className="text-xs text-slate-400 mt-2 font-bold flex items-center gap-1">
+                    <span>🗳️ HÒM PHIẾU BẢO MẬT</span>
                   </div>
-                  <div className="text-xs text-slate-300 truncate mt-1">{choiceAText}</div>
+                  <div className="text-xs text-slate-200 font-bold truncate mt-1">{choiceAText}</div>
                 </div>
 
-                {/* Right Bunker: Phe B */}
-                <div
-                  className={`p-4 rounded-2xl border-3 border-black transition-all text-right ${
-                    tally.percentB > tally.percentA
-                      ? 'bg-cyber-crimson/25 border-cyber-crimson shadow-[0_0_20px_rgba(239,35,60,0.4)] scale-102'
-                      : 'bg-slate-950/80 border-slate-800'
-                  }`}
-                >
+                {/* Right Bunker: Phe B (Secret) */}
+                <div className="p-4 rounded-2xl border-3 border-black bg-slate-950/80 border-slate-800 transition-all text-right">
                   <div className="flex items-center justify-between flex-row-reverse">
                     <span className="px-2.5 py-1 bg-cyber-crimson text-white font-black text-xs rounded-lg uppercase">
                       ⚖️ PHE B
                     </span>
-                    <span className="text-3xl font-black text-cyber-crimson font-mono">
-                      {tally.percentB}%
-                    </span>
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-black/70 rounded-xl border border-cyber-crimson/50 text-cyber-crimson">
+                      <span className="text-sm animate-pulse">🔒</span>
+                      <span className="text-xl font-black font-mono tracking-widest">?? %</span>
+                    </div>
                   </div>
-                  <div className="text-lg font-black text-white mt-1">
-                    {tally.countB} <span className="text-xs text-slate-400 font-normal">phiếu bầu</span>
+                  <div className="text-xs text-slate-400 mt-2 font-bold flex items-center gap-1 justify-end">
+                    <span>🗳️ HÒM PHIẾU BẢO MẬT</span>
                   </div>
-                  <div className="text-xs text-slate-300 truncate mt-1">{choiceBText}</div>
+                  <div className="text-xs text-slate-200 font-bold truncate mt-1">{choiceBText}</div>
                 </div>
               </div>
 
-              {/* THE ROPE AND THE CENTRAL TUG KNOT */}
+              {/* THE ROPE AND THE CENTRAL TUG KNOT (CENTERED IN SECRET BALLOT MODE) */}
               <div className="py-8 relative my-4">
                 {/* Horizontal Cyber Rope */}
                 <div className="w-full h-6 bg-gradient-to-r from-cyber-cyan via-amber-200 to-cyber-crimson rounded-full border-3 border-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] relative flex items-center">
                   {/* Tension marks */}
                   <div className="absolute inset-0 flex justify-between px-6 pointer-events-none opacity-40">
-                    <span className="text-[10px] font-black text-black">◀ PULL A</span>
-                    <span className="text-[10px] font-black text-black">| 50% |</span>
-                    <span className="text-[10px] font-black text-black">PULL B ▶</span>
+                    <span className="text-[10px] font-black text-black">◀ PHE A</span>
+                    <span className="text-[10px] font-black text-black">| BỎ PHIẾU KÍN |</span>
+                    <span className="text-[10px] font-black text-black">PHE B ▶</span>
                   </div>
 
                   {/* Midline Anchor Indicator */}
                   <div className="absolute left-1/2 -top-3 bottom-0 w-0.5 bg-white/40 -translate-x-1/2 pointer-events-none" />
 
-                  {/* THE DYNAMIC KNOT / SCALE */}
+                  {/* THE BALANCED TENSION KNOT (KEPT CENTERED AT 50% DURING VOTING) */}
                   <div
                     className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-300 ease-out z-20 flex flex-col items-center"
-                    style={{ left: `${knotLeftPercent}%` }}
+                    style={{ left: '50%' }}
                   >
-                    <div className="w-14 h-14 rounded-2xl bg-cyber-yellow border-3 border-black shadow-[0_0_15px_rgba(255,209,102,0.8)] flex items-center justify-center text-2xl animate-bounce">
-                      {tally.majority === 'A' ? '🛡️' : tally.majority === 'B' ? '⚖️' : '✊'}
+                    <div className="w-14 h-14 rounded-2xl bg-cyber-yellow border-3 border-black shadow-[0_0_20px_rgba(255,209,102,0.9)] flex items-center justify-center text-2xl animate-pulse">
+                      ⚖️
                     </div>
-                    <span className="px-2 py-0.5 bg-black/90 border border-cyber-yellow rounded-md text-[10px] font-black text-cyber-yellow whitespace-nowrap mt-1">
-                      {tally.majority === 'A'
-                        ? 'Phe A Áp Đảo!'
-                        : tally.majority === 'B'
-                        ? 'Phe B Áp Đảo!'
-                        : 'Giằng Co 50/50'}
+                    <span className="px-2.5 py-1 bg-black/95 border-2 border-cyber-yellow rounded-lg text-[10px] font-black text-cyber-yellow whitespace-nowrap mt-1 flex items-center gap-1.5 shadow-md">
+                      <span className="animate-spin text-xs">⚡</span> CẢ LỚP ĐANG BỎ PHIẾU KÍN...
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Voter Avatars Live Roster Grid */}
-              <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-slate-800">
-                {/* Team A Roster */}
-                <div>
-                  <div className="text-[11px] font-black uppercase text-cyber-cyan mb-2">
-                    Chiến sĩ Phe A ({playersA.length}):
+              {/* Neutral Live Participation Roster (NO SIDES REVEALED!) */}
+              <div className="mt-6 pt-4 border-t-2 border-slate-800">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs font-black uppercase text-cyber-yellow flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-cyber-yellow text-black rounded font-black text-[10px]">BỎ PHIẾU KÍN</span>
+                    <span>TIẾN ĐỘ THAM GIA BIỂU QUYẾT:</span>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto pr-1">
-                    {playersA.length === 0 ? (
-                      <span className="text-xs text-slate-500 italic">Đang chờ phiếu đầu tiên...</span>
-                    ) : (
-                      playersA.map((p) => {
-                        const av = getAvatarById(p.avatarId || 'keyboard_warrior');
-                        return (
-                          <span
-                            key={p.id}
-                            className="inline-flex items-center gap-1 px-2 py-1 bg-slate-800 border border-cyber-cyan/50 rounded-lg text-xs font-bold text-white shadow-sm"
-                          >
-                            <span>{av.emoji}</span>
-                            <span className="truncate max-w-[80px]">{p.name}</span>
-                          </span>
-                        );
-                      })
-                    )}
+                  <div className="text-sm font-black text-white font-mono">
+                    {Object.keys(stances).length} / {playersList.length} CHIẾN SĨ ({playersList.length > 0 ? Math.round((Object.keys(stances).length / playersList.length) * 100) : 0}%)
                   </div>
                 </div>
 
-                {/* Team B Roster */}
-                <div>
-                  <div className="text-[11px] font-black uppercase text-cyber-crimson mb-2 text-right">
-                    Chiến sĩ Phe B ({playersB.length}):
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 justify-end max-h-20 overflow-y-auto pl-1">
-                    {playersB.length === 0 ? (
-                      <span className="text-xs text-slate-500 italic">Đang chờ phiếu đầu tiên...</span>
-                    ) : (
-                      playersB.map((p) => {
-                        const av = getAvatarById(p.avatarId || 'keyboard_warrior');
-                        return (
-                          <span
-                            key={p.id}
-                            className="inline-flex items-center gap-1 px-2 py-1 bg-slate-800 border border-cyber-crimson/50 rounded-lg text-xs font-bold text-white shadow-sm"
-                          >
-                            <span>{av.emoji}</span>
-                            <span className="truncate max-w-[80px]">{p.name}</span>
-                          </span>
-                        );
-                      })
-                    )}
-                  </div>
+                {/* Progress Bar */}
+                <div className="w-full h-3 bg-slate-950 rounded-full border border-slate-700 overflow-hidden mb-3">
+                  <div
+                    className="h-full bg-gradient-to-r from-cyber-cyan via-cyber-yellow to-cyber-crimson transition-all duration-300"
+                    style={{ width: `${playersList.length > 0 ? Math.min(100, Math.round((Object.keys(stances).length / playersList.length) * 100)) : 0}%` }}
+                  />
+                </div>
+
+                {/* Roster of players who cast their ballot (neutral badges, no side revealed!) */}
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                  {Object.keys(stances).length === 0 ? (
+                    <span className="text-xs text-slate-500 italic py-1">Đang chờ những lá phiếu đầu tiên từ điện thoại của cả lớp...</span>
+                  ) : (
+                    Object.keys(stances).map((pId) => {
+                      const p = state.players?.[pId];
+                      if (!p) return null;
+                      const av = getAvatarById(p.avatarId || 'keyboard_warrior');
+                      return (
+                        <span
+                          key={pId}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-800/90 border border-slate-700 rounded-xl text-xs font-bold text-white shadow-sm animate-in zoom-in-95"
+                        >
+                          <span>{av.emoji}</span>
+                          <span className="truncate max-w-[90px]">{p.name}</span>
+                          <span className="text-[10px] text-emerald-400 font-black">✓ Đã nộp</span>
+                        </span>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
