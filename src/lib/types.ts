@@ -167,6 +167,8 @@ export interface Round1State {
   comments?: Record<string, FeedComment>;
   posts?: Record<string, TrendingPost>;
   trendingTopIds?: string[];
+  commentVoters?: Record<string, Record<string, 'heart' | 'tomato' | 'brick'>>; // commentId -> voterId -> reaction
+  promptVoters?: Record<number, Record<string, boolean>>; // promptIndex -> voterId -> true
   // Backwards compatibility for Quiplash duel flow
   submissions: Record<string, RoastSubmission>;
   duels: DuelPair[];

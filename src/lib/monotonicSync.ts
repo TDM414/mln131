@@ -109,6 +109,14 @@ export function mergeMonotonicState<T extends Partial<GameShowState>>(
         ...(prev.round1State?.comments || {}),
         ...(incR1.comments || {}),
       },
+      commentVoters: {
+        ...(prev.round1State?.commentVoters || {}),
+        ...(incR1.commentVoters || {}),
+      },
+      promptVoters: {
+        ...(prev.round1State?.promptVoters || {}),
+        ...(incR1.promptVoters || {}),
+      },
       submissions: {
         ...(prev.round1State?.submissions || {}),
         ...(incR1.submissions || {}),

@@ -127,6 +127,22 @@ export default function Round1Play({
     }
   }, [myExistingComment, currentPromptIndex]);
 
+  // Sync myReactions from server commentVoters
+  useEffect(() => {
+    const voters = state.round1State?.commentVoters;
+    if (voters && playerId) {
+      const serverReactions: Record<string, 'heart' | 'tomato' | 'brick'> = {};
+      for (const [cId, map] of Object.entries(voters)) {
+        if (map[playerId]) {
+          serverReactions[cId] = map[playerId];
+        }
+      }
+      if (Object.keys(serverReactions).length > 0) {
+        setMyReactions((prev) => ({ ...serverReactions, ...prev }));
+      }
+    }
+  }, [state.round1State?.commentVoters, playerId]);
+
   // Quick Chip Insertion
   const handleChipClick = (chip: string) => {
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -172,14 +188,17 @@ export default function Round1Play({
     setHasSubmitted(true);
   };
 
-  // React to a Feed Post
+  // React to a Feed Post (1 vote per comment, prevent spam)
   const handleReactPost = async (
     postId: string,
     reactionType: 'heart' | 'tomato' | 'brick'
   ) => {
+    // If user clicks the exact same reaction again, ignore (do not spam network)
+    if (myReactions[postId] === reactionType) return;
+
     const now = Date.now();
-    // 100ms debounce
-    if (now - lastReactionTimeRef.current < 100) return;
+    // 200ms debounce
+    if (now - lastReactionTimeRef.current < 200) return;
     lastReactionTimeRef.current = now;
 
     if (typeof navigator !== 'undefined' && navigator.vibrate) {

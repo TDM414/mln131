@@ -729,10 +729,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 6b. Round 1 / Mode 1: React to Feed Post
+  // 6b. Round 1 / Mode 1: React to Feed Post (Strict 1-Vote Per Player, No Direct Score Spamming)
   else if (action === 'REACT_FEED_POST' || action === 'REACT_FEED') {
     const { postId, reactionType, voterId } = payload;
-    if (postId && reactionType) {
+    if (postId && reactionType && voterId) {
       const normalizedReaction: 'heart' | 'tomato' | 'brick' =
         reactionType === 'like' || reactionType === 'heart'
           ? 'heart'
@@ -742,30 +742,51 @@ export async function POST(req: NextRequest) {
       const post = room.round1State.posts?.[postId];
 
       if (comment) {
-        comment.reactions[normalizedReaction] = (comment.reactions[normalizedReaction] || 0) + 1;
-        comment.score += 50;
-      }
+        if (!room.round1State.commentVoters) room.round1State.commentVoters = {};
+        if (!room.round1State.commentVoters[postId]) room.round1State.commentVoters[postId] = {};
 
-      if (post) {
-        if (normalizedReaction === 'heart') post.likes = (post.likes || 0) + 1;
-        else if (normalizedReaction === 'tomato') post.tomatoes = (post.tomatoes || 0) + 1;
-        else if (normalizedReaction === 'brick') post.bricks = (post.bricks || 0) + 1;
-        post.totalReactions = (post.totalReactions || 0) + 1;
-      }
+        const prevReaction = room.round1State.commentVoters[postId][voterId];
 
-      // Award +50 points to post author
-      const authorId = comment?.authorId || post?.playerId;
-      if (authorId && room.players[authorId]) {
-        room.players[authorId].score += 50;
-        room.players[authorId].roundScores.ROUND_1 =
-          (room.players[authorId].roundScores.ROUND_1 || 0) + 50;
-      }
+        // 1. Same reaction already clicked by this voter: ignore completely (anti-spam)
+        if (prevReaction === normalizedReaction) {
+          // Do nothing
+        }
+        // 2. Switching to a different reaction: decrement old, increment new
+        else if (prevReaction && prevReaction !== normalizedReaction) {
+          comment.reactions[prevReaction] = Math.max(0, (comment.reactions[prevReaction] || 1) - 1);
+          comment.reactions[normalizedReaction] = (comment.reactions[normalizedReaction] || 0) + 1;
+          room.round1State.commentVoters[postId][voterId] = normalizedReaction;
 
-      // Also award +50 points to active voter/interactor
-      if (voterId && room.players[voterId] && voterId !== authorId) {
-        room.players[voterId].score += 50;
-        room.players[voterId].roundScores.ROUND_1 =
-          (room.players[voterId].roundScores.ROUND_1 || 0) + 50;
+          if (post) {
+            if (prevReaction === 'heart') post.likes = Math.max(0, (post.likes || 1) - 1);
+            else if (prevReaction === 'tomato') post.tomatoes = Math.max(0, (post.tomatoes || 1) - 1);
+            else if (prevReaction === 'brick') post.bricks = Math.max(0, (post.bricks || 1) - 1);
+
+            if (normalizedReaction === 'heart') post.likes = (post.likes || 0) + 1;
+            else if (normalizedReaction === 'tomato') post.tomatoes = (post.tomatoes || 0) + 1;
+            else if (normalizedReaction === 'brick') post.bricks = (post.bricks || 0) + 1;
+          }
+        }
+        // 3. First time voting on this comment: increment new reaction and track voter
+        else {
+          comment.reactions[normalizedReaction] = (comment.reactions[normalizedReaction] || 0) + 1;
+          room.round1State.commentVoters[postId][voterId] = normalizedReaction;
+
+          if (post) {
+            if (normalizedReaction === 'heart') post.likes = (post.likes || 0) + 1;
+            else if (normalizedReaction === 'tomato') post.tomatoes = (post.tomatoes || 0) + 1;
+            else if (normalizedReaction === 'brick') post.bricks = (post.bricks || 0) + 1;
+            post.totalReactions = (post.totalReactions || 0) + 1;
+          }
+
+          // Record voter participation for this prompt (to award +50 PTS after top is determined)
+          const pIdx = typeof comment.promptIndex === 'number' ? comment.promptIndex : (room.round1State?.currentPromptIndex || 0);
+          if (!room.round1State.promptVoters) room.round1State.promptVoters = {};
+          if (!room.round1State.promptVoters[pIdx]) room.round1State.promptVoters[pIdx] = {};
+          room.round1State.promptVoters[pIdx][voterId] = true;
+        }
+
+        // NOTE: No live score additions during clicks! Points are awarded ONLY after prompt ends in POST_REVEAL!
       }
 
       // Recompute Top Trending IDs
@@ -784,7 +805,7 @@ export async function POST(req: NextRequest) {
       room.recentEvents.push({
         id: eventId,
         type: 'feed_reacted',
-        payload: { postId, reactionType: normalizedReaction, voterId, authorId },
+        payload: { postId, reactionType: normalizedReaction, voterId, authorId: comment?.authorId },
         timestamp,
       });
     }

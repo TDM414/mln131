@@ -242,12 +242,13 @@ export default function Round1Host({
       colors: ['#FFD166', '#06D6A0', '#EF233C', '#7209B7', '#4CC9F0'],
     });
 
-    // Award Prompt Top 3 bonus (+500, +300, +150)
+    // Award Prompt Top 3 bonus (+500, +300, +150) and active voters (+50 PTS)
     if (!awardedPromptsRef.current.has(currentPromptIndex) && sortedCurrentPromptComments.length > 0) {
       awardedPromptsRef.current.add(currentPromptIndex);
       const updatedPlayers = { ...state.players };
       let hasChanges = false;
 
+      // 1. Award Top 3 Comments of THIS Prompt
       sortedCurrentPromptComments.slice(0, 3).forEach((comment, idx) => {
         const bonus = idx === 0 ? 500 : idx === 1 ? 300 : 150;
         const authorId = comment.authorId;
@@ -259,6 +260,21 @@ export default function Round1Host({
             ROUND_1: (currentP.roundScores?.ROUND_1 || 0) + bonus,
           };
           updatedPlayers[authorId] = currentP;
+          hasChanges = true;
+        }
+      });
+
+      // 2. Award +50 PTS to players who participated in voting for this prompt
+      const promptVotersMap = state.round1State?.promptVoters?.[currentPromptIndex] || {};
+      Object.keys(promptVotersMap).forEach((vId) => {
+        if (updatedPlayers[vId]) {
+          const currentP = { ...updatedPlayers[vId] };
+          currentP.score = (currentP.score || 0) + 50;
+          currentP.roundScores = {
+            ...currentP.roundScores,
+            ROUND_1: (currentP.roundScores?.ROUND_1 || 0) + 50,
+          };
+          updatedPlayers[vId] = currentP;
           hasChanges = true;
         }
       });
@@ -1154,7 +1170,7 @@ export default function Round1Host({
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div className="text-xs text-slate-300 font-bold flex items-center gap-2">
             <span className="p-1.5 bg-cyber-yellow text-black font-black rounded-lg">⭐ VÒNG 1</span>
-            <span>Đã cộng điểm thưởng Top Trending & tương tác vào Bảng Tổng Sắp!</span>
+            <span>⭐ Đã cộng điểm thưởng Top ở từng bài! (Màn hình tổng kết chỉ vinh danh cmt viral nhất, không cộng đúp điểm)</span>
           </div>
 
           <div className="flex items-center gap-3">
