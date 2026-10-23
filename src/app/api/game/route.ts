@@ -421,42 +421,24 @@ export async function POST(req: NextRequest) {
         room.round2State.phase = targetPhase as any;
 
         if (targetPhase === 'REVEAL') {
-          // Timeout penalty: decrement lives for any player who didn't submit an answer
+          // Timeout: record answer with 0 points for any player who didn't submit an answer
           if (!room.round2State.answers) room.round2State.answers = {};
           const answers = room.round2State.answers;
           for (const [pId, player] of Object.entries(room.players)) {
             if (!answers[pId]) {
-              const curLives = player.r2Lives ?? 3;
-              const nextLives = Math.max(0, curLives - 1);
-              player.r2Lives = nextLives;
               answers[pId] = {
                 choice: 'CAP',
                 timestamp,
                 remainingTime: 0,
                 isCorrect: false,
                 score: 0,
-                livesRemaining: nextLives,
+                livesRemaining: 3,
+                questionIndex: room.round2State.currentQuestionIndex || 0,
               };
             }
           }
         } else if (targetPhase === 'ROUND_SUMMARY' || targetPhase === 'SUMMARY') {
-          // Award surviving lives bonus (+1500 for 3 lives, +1000 for 2, +500 for 1)
-          const r2StateAny = room.round2State as any;
-          if (!r2StateAny.bonusAwarded) {
-            r2StateAny.bonusAwarded = true;
-            for (const player of Object.values(room.players)) {
-              const lives = player.r2Lives ?? 3;
-              let bonus = 0;
-              if (lives === 3) bonus = 1500;
-              else if (lives === 2) bonus = 1000;
-              else if (lives === 1) bonus = 500;
-
-              if (bonus > 0) {
-                player.score += bonus;
-                player.roundScores.ROUND_2 = (player.roundScores.ROUND_2 || 0) + bonus;
-              }
-            }
-          }
+          // Pure points mode: no surviving lives bonus
         } else if (targetPhase === 'QUESTION_ACTIVE') {
           // New question: reset current question answers
           room.round2State.answers = {};
@@ -702,11 +684,11 @@ export async function POST(req: NextRequest) {
         timestamp,
       };
 
-      // Award base participation points (+500 PTS) for contributing a comment
+      // Award base participation points (+300 PTS) for contributing a comment
       if (playerId && room.players[playerId]) {
-        room.players[playerId].score += 500;
+        room.players[playerId].score += 300;
         room.players[playerId].roundScores.ROUND_1 =
-          (room.players[playerId].roundScores.ROUND_1 || 0) + 500;
+          (room.players[playerId].roundScores.ROUND_1 || 0) + 300;
       }
 
       room.recentEvents.push({
@@ -732,7 +714,7 @@ export async function POST(req: NextRequest) {
 
       if (comment) {
         comment.reactions[normalizedReaction] = (comment.reactions[normalizedReaction] || 0) + 1;
-        comment.score += 100;
+        comment.score += 50;
       }
 
       if (post) {
@@ -742,19 +724,19 @@ export async function POST(req: NextRequest) {
         post.totalReactions = (post.totalReactions || 0) + 1;
       }
 
-      // Award +100 points to post author
+      // Award +50 points to post author
       const authorId = comment?.authorId || post?.playerId;
       if (authorId && room.players[authorId]) {
-        room.players[authorId].score += 100;
+        room.players[authorId].score += 50;
         room.players[authorId].roundScores.ROUND_1 =
-          (room.players[authorId].roundScores.ROUND_1 || 0) + 100;
+          (room.players[authorId].roundScores.ROUND_1 || 0) + 50;
       }
 
-      // Also award +100 points to active voter/interactor
+      // Also award +50 points to active voter/interactor
       if (voterId && room.players[voterId] && voterId !== authorId) {
-        room.players[voterId].score += 100;
+        room.players[voterId].score += 50;
         room.players[voterId].roundScores.ROUND_1 =
-          (room.players[voterId].roundScores.ROUND_1 || 0) + 100;
+          (room.players[voterId].roundScores.ROUND_1 || 0) + 50;
       }
 
       // Recompute Top Trending IDs
@@ -836,12 +818,11 @@ export async function POST(req: NextRequest) {
         ? clientRemainingTime
         : Math.max(0, totalTime - (Number(reactionTimeMs) || 0));
 
-      const pointsEarned = calculateSpeedDecayScore(question.basePoints || 1000, remainingTime, totalTime, isCorrect);
+      const pointsEarned = calculateSpeedDecayScore(question.basePoints || 1500, remainingTime, totalTime, isCorrect);
 
       const player = room.players[playerId];
-      const curLives = player.r2Lives ?? 3;
-      const nextLives = isCorrect ? curLives : Math.max(0, curLives - 1);
-      player.r2Lives = nextLives;
+      player.r2Lives = 3;
+      const nextLives = 3;
 
       if (isCorrect) {
         player.score += pointsEarned;

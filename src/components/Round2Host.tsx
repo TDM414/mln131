@@ -108,9 +108,9 @@ export default function Round2Host({
     return Object.values(state.players || {});
   }, [state.players]);
 
-  // Active surviving players (lives > 0)
+  // In pure points mode: ALL players are active! No elimination.
   const activePlayers = useMemo(() => {
-    return playersList.filter((p) => (p.r2Lives ?? 3) > 0);
+    return playersList;
   }, [playersList]);
 
   // Count players who answered this question
@@ -185,20 +185,7 @@ export default function Round2Host({
     setIsExploding(true);
     sound.playExplosion(true);
 
-    // Decrement lives for any player who didn't submit
-    const currentAnswers = state.round2State?.answers || {};
-    const updatedPlayers = { ...state.players };
-    let changed = false;
-
-    Object.values(updatedPlayers).forEach((p) => {
-      if (!currentAnswers[p.id]) {
-        const curLives = p.r2Lives ?? 3;
-        if (curLives > 0) {
-          p.r2Lives = Math.max(0, curLives - 1);
-          changed = true;
-        }
-      }
-    });
+    // In pure points mode: no lives are lost on timeout, all players remain active
 
     // Sound chime based on question answer
     setTimeout(() => {
@@ -311,12 +298,9 @@ export default function Round2Host({
       .sort((a, b) => b.score - a.score);
   }, [answers, state.players]);
 
-  // Overall Mode 2 ranking (survivors with most lives & round scores)
+  // Overall Mode 2 ranking (sorted purely by Round 2 score)
   const mode2Leaderboard = useMemo(() => {
     return [...playersList].sort((a, b) => {
-      const livesA = a.r2Lives ?? 3;
-      const livesB = b.r2Lives ?? 3;
-      if (livesB !== livesA) return livesB - livesA;
       const scoreA = a.roundScores?.ROUND_2 || 0;
       const scoreB = b.roundScores?.ROUND_2 || 0;
       return scoreB - scoreA;
@@ -625,31 +609,31 @@ export default function Round2Host({
               )}
             </div>
 
-            {/* 3 Lives Health Status Overview */}
+            {/* Answer Results Overview */}
             <div className="bg-slate-900/90 border-3 border-black rounded-2xl p-4 shadow-[4px_4px_0px_#000]">
               <div className="flex items-center justify-between pb-2 mb-3 border-b-2 border-slate-700">
-                <div className="flex items-center gap-2 text-rose-400 font-black text-xs uppercase">
-                  <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
-                  <span>TÌNH TRẠNG SINH TỒN (3 MẠNG)</span>
+                <div className="flex items-center gap-2 text-cyber-yellow font-black text-xs uppercase">
+                  <CheckCircle2 className="w-4 h-4 text-cyber-yellow" />
+                  <span>KẾT QUẢ TRẢ LỜI CẢ LỚP</span>
                 </div>
                 <span className="text-xs font-bold text-slate-400">
-                  {activePlayers.length} Còn Sống / {playersList.length - activePlayers.length} Ma Mạng
+                  {Object.values(answers).filter((a) => a.isCorrect).length} Đúng / {playersList.length} Bạn
                 </span>
               </div>
 
               <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
                 {playersList.map((p) => {
                   const avatar = getAvatarById(p.avatarId);
-                  const lives = p.r2Lives ?? 3;
                   const answered = answers[p.id];
                   const wasCorrect = answered?.isCorrect;
+                  const didAnswer = Boolean(answered);
 
                   return (
                     <div
                       key={p.id}
                       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-bold ${
-                        lives === 0
-                          ? 'bg-purple-950/60 border-purple-800 text-purple-300'
+                        !didAnswer
+                          ? 'bg-slate-800 border-slate-700 text-slate-400'
                           : wasCorrect
                           ? 'bg-emerald-950/60 border-emerald-700 text-emerald-200'
                           : 'bg-rose-950/60 border-rose-700 text-rose-200'
@@ -657,14 +641,8 @@ export default function Round2Host({
                     >
                       <span>{avatar.emoji}</span>
                       <span className="truncate max-w-[90px]">{p.name}</span>
-                      <span className="text-[11px]">
-                        {lives === 3
-                          ? '❤️❤️❤️'
-                          : lives === 2
-                          ? '❤️❤️🖤'
-                          : lives === 1
-                          ? '❤️🖤🖤'
-                          : '👻'}
+                      <span className="text-[11px] font-black">
+                        {!didAnswer ? '⏳ Quá giờ' : wasCorrect ? '✅ +' + (answered.score || 0) : '❌ 0đ'}
                       </span>
                     </div>
                   );
@@ -742,8 +720,8 @@ export default function Round2Host({
                   <h3 className="font-black text-lg truncate max-w-[200px] mb-1">
                     {player.name}
                   </h3>
-                  <div className="text-xs font-bold mb-3">
-                    {lives > 0 ? `Còn ${lives} Mạng (❤️ x${lives})` : 'Hóa Ma Mạng 👻'}
+                  <div className="text-xs font-bold mb-3 opacity-80">
+                    Chiến thần Bóc phốt
                   </div>
                   <div className="px-4 py-1.5 bg-black text-white font-mono font-black text-base rounded-xl border border-black">
                     +{r2Score.toLocaleString()} PTS
@@ -761,7 +739,6 @@ export default function Round2Host({
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               {mode2Leaderboard.slice(3).map((p, i) => {
                 const avatar = getAvatarById(p.avatarId);
-                const lives = p.r2Lives ?? 3;
                 const r2Score = p.roundScores?.ROUND_2 || 0;
                 return (
                   <div
@@ -774,8 +751,7 @@ export default function Round2Host({
                       <span className="font-bold text-white truncate max-w-[100px]">{p.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span>{lives > 0 ? `❤️x${lives}` : '👻'}</span>
-                      <span className="font-black text-emerald-400">+{r2Score}</span>
+                      <span className="font-black text-emerald-400">+{r2Score.toLocaleString()} PTS</span>
                     </div>
                   </div>
                 );
@@ -788,7 +764,7 @@ export default function Round2Host({
             <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
               <div className="text-xs text-slate-300 font-bold flex items-center gap-2">
                 <span className="p-1.5 bg-rose-500 text-white font-black rounded-lg">⚡ VÒNG 2 HOÀN TẤT</span>
-                <span>Đã ghi nhận điểm Bóc Phốt 10s & Thưởng Sinh Tồn vào Bảng Tổng Sắp!</span>
+                <span>Đã ghi nhận điểm Bóc Phốt 10s vào Bảng Tổng Sắp!</span>
               </div>
 
               <div className="flex items-center gap-3">

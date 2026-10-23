@@ -95,8 +95,7 @@ export default function Round2Play({
 
   // Player state
   const currentPlayer = state.players?.[playerId];
-  const lives = currentPlayer?.r2Lives ?? 3;
-  const isGhost = lives <= 0;
+  const isGhost = false; // Pure points mode: no player elimination
   const playerAvatar = getAvatarById(avatarId);
 
   // Local submission tracking
@@ -259,27 +258,12 @@ export default function Round2Play({
             </div>
           </div>
 
-          {/* 3 Lives Health Meter / Ghost Indicator */}
-          <div className="flex items-center gap-2">
-            {isGhost ? (
-              <div className="flex items-center gap-1 px-3 py-1 bg-purple-900/80 border-2 border-purple-500 rounded-xl text-purple-200 text-xs font-black animate-pulse">
-                <Ghost className="w-4 h-4 text-purple-400" />
-                <span>MA MẠNG</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 px-3 py-1 bg-slate-800 border-2 border-black rounded-xl shadow-[2px_2px_0px_#000]">
-                <span className="text-sm tracking-widest">
-                  {lives === 3
-                    ? '❤️❤️❤️'
-                    : lives === 2
-                    ? '❤️❤️🖤'
-                    : '❤️🖤🖤'}
-                </span>
-                <span className="text-[10px] font-black text-rose-400 ml-1">
-                  x{lives}
-                </span>
-              </div>
-            )}
+          {/* Round 2 Points Indicator */}
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-800 border-2 border-black rounded-xl shadow-[2px_2px_0px_#000]">
+            <Zap className="w-3.5 h-3.5 text-cyber-yellow" />
+            <span className="text-xs font-black text-cyber-yellow">
+              +{(currentPlayer?.roundScores?.ROUND_2 || 0).toLocaleString()} PTS
+            </span>
           </div>
         </div>
 
@@ -526,14 +510,11 @@ export default function Round2Play({
                   {didTimeout ? 'HẾT GIỜ! 💥' : 'NỔ BOM RỒI! 💥'}
                 </h3>
                 <p className="text-xs font-black uppercase bg-black text-rose-400 px-3 py-1 rounded-full inline-block mb-3">
-                  BẠN BỊ MẤT 1 MẠNG! (-1 ❤️)
+                  {didTimeout ? 'QUÁ GIỜ BẤM BÀI! (0 PTS)' : 'PHÁN ĐOÁN CHƯA CHÍNH XÁC! (0 PTS)'}
                 </p>
 
-                <div className="text-lg font-black mb-1">
-                  {lives <= 0 ? '👻 BẠN ĐÃ BIẾN THÀNH MA MẠNG' : `CÒN LẠI: ${lives} MẠNG`}
-                </div>
-                <div className="text-xs opacity-90">
-                  {didTimeout ? 'Do không kịp bấm trước 5 giây' : 'Do phán đoán sai thực tế'}
+                <div className="text-sm font-bold opacity-90">
+                  Hãy sẵn sàng phản xạ nhanh hơn ở câu hỏi tiếp theo nhé!
                 </div>
               </>
             )}
@@ -578,9 +559,9 @@ export default function Round2Play({
               </span>
             </div>
             <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-400 font-bold">Số mạng còn lại:</span>
-              <span className="font-black">
-                {lives > 0 ? `❤️ x${lives}` : '👻 Ma Mạng'}
+              <span className="text-slate-400 font-bold">Tổng điểm hiện tại:</span>
+              <span className="font-mono font-black text-cyber-yellow text-base">
+                {(currentPlayer?.score || 0).toLocaleString()} PTS
               </span>
             </div>
           </div>

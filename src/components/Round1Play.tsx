@@ -230,8 +230,8 @@ export default function Round1Play({
     : 0;
 
   const myPlacementBonus =
-    myRankIndex === 0 ? 3000 : myRankIndex === 1 ? 2000 : myRankIndex === 2 ? 1500 : 0;
-  const myReactionBonus = myTotalReactions * 100;
+    myRankIndex === 0 ? 500 : myRankIndex === 1 ? 300 : myRankIndex === 2 ? 150 : 0;
+  const myReactionBonus = myTotalReactions * 50;
   const myTotalRoundScore = myPlacementBonus + myReactionBonus;
 
   // ============================================================

@@ -246,17 +246,6 @@ export default function DevBotSimulator({
 
         VIETNAMESE_STUDENTS.forEach((bot) => {
           const botId = `bot_${bot.name.replace(/\s+/g, '_').toLowerCase()}`;
-          const botPlayer = state.players?.[botId];
-
-          // Skip eliminated bots (lives <= 0) and cheer as ghosts
-          if (botPlayer && botPlayer.r2Lives !== undefined && botPlayer.r2Lives <= 0) {
-            const ghostEmojis = ['👻', '🔥', '💀', '👏', '🍿'];
-            const randomEmoji = ghostEmojis[Math.floor(Math.random() * ghostEmojis.length)];
-            setTimeout(() => {
-              sync.sendDanmaku(randomEmoji, 'Cố lên anh em ơi!', bot.name, bot.avatarId);
-            }, Math.random() * 2500 + 1000);
-            return;
-          }
 
           // 85% accuracy for bots
           const questions = state.round2State?.questions || [];

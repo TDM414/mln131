@@ -242,14 +242,14 @@ export default function Round1Host({
       colors: ['#FFD166', '#06D6A0', '#EF233C', '#7209B7', '#4CC9F0'],
     });
 
-    // Award Prompt Top 3 bonus (+1000, +600, +300)
+    // Award Prompt Top 3 bonus (+500, +300, +150)
     if (!awardedPromptsRef.current.has(currentPromptIndex) && sortedCurrentPromptComments.length > 0) {
       awardedPromptsRef.current.add(currentPromptIndex);
       const updatedPlayers = { ...state.players };
       let hasChanges = false;
 
       sortedCurrentPromptComments.slice(0, 3).forEach((comment, idx) => {
-        const bonus = idx === 0 ? 1000 : idx === 1 ? 600 : 300;
+        const bonus = idx === 0 ? 500 : idx === 1 ? 300 : 150;
         const authorId = comment.authorId;
         if (bonus > 0 && authorId && updatedPlayers[authorId]) {
           const currentP = { ...updatedPlayers[authorId] };
@@ -285,7 +285,7 @@ export default function Round1Host({
   }, [phase, currentPromptIndex, sortedCurrentPromptComments]);
 
   // ============================================================
-  // PHASE 4: TOP_TRENDING CELEBRATION & BONUS SCORING
+  // PHASE 4: TOP_TRENDING CELEBRATION (No duplicate bonus)
   // ============================================================
   useEffect(() => {
     if (phase !== 'TOP_TRENDING') {
@@ -306,38 +306,7 @@ export default function Round1Host({
       origin: { y: 0.55 },
       colors: ['#FFD166', '#06D6A0', '#EF233C', '#7209B7', '#4CC9F0'],
     });
-
-    // Award Top Trending bonus for overall top winners
-    if (!hasAwardedBonusRef.current && sortedComments.length > 0) {
-      hasAwardedBonusRef.current = true;
-      const updatedPlayers = { ...state.players };
-      let hasChanges = false;
-
-      sortedComments.forEach((comment, idx) => {
-        let bonus = 0;
-        if (idx === 0) bonus = 2000;
-        else if (idx === 1) bonus = 1500;
-        else if (idx === 2) bonus = 1000;
-        else if (idx < 8) bonus = 300;
-
-        const authorId = comment.authorId;
-        if (bonus > 0 && authorId && updatedPlayers[authorId]) {
-          const currentP = { ...updatedPlayers[authorId] };
-          currentP.score = (currentP.score || 0) + bonus;
-          currentP.roundScores = {
-            ...currentP.roundScores,
-            ROUND_1: (currentP.roundScores?.ROUND_1 || 0) + bonus,
-          };
-          updatedPlayers[authorId] = currentP;
-          hasChanges = true;
-        }
-      });
-
-      if (hasChanges) {
-        sync.hostUpdateState({ players: updatedPlayers });
-      }
-    }
-  }, [phase, sortedComments, state.players]);
+  }, [phase]);
 
   // Transition Helpers
   const handleTransitionFromPrompt = async () => {
@@ -916,7 +885,7 @@ export default function Round1Host({
                   ? 'border-slate-300 shadow-[4px_4px_0px_#94A3B8]'
                   : 'border-amber-700 shadow-[4px_4px_0px_#C2410C]';
                 const medalBg = isTop1 ? 'bg-amber-400 text-black' : isTop2 ? 'bg-slate-300 text-black' : 'bg-amber-700 text-white';
-                const bonusPts = isTop1 ? '+1,000' : isTop2 ? '+600' : '+300';
+                const bonusPts = isTop1 ? '+500' : isTop2 ? '+300' : '+150';
 
                 return (
                   <div
@@ -1012,7 +981,7 @@ export default function Round1Host({
         {top2 && (
           <div className="order-2 md:order-1 bg-slate-900 border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_#000] flex flex-col justify-between h-[340px] relative">
             <div className="absolute -top-4 left-6 px-3 py-1 bg-slate-200 text-black font-black text-xs uppercase rounded-lg border-2 border-black shadow-[2px_2px_0px_#000]">
-              🥈 TOP 2 TRENDING (+2,000 PTS)
+              🥈 Á QUÂN TOP 2 TRENDING
             </div>
 
             <div className="flex items-center gap-3 mt-3">
@@ -1043,7 +1012,7 @@ export default function Round1Host({
           <div className="order-1 md:order-2 bg-gradient-to-b from-amber-950/80 to-[#141A29] border-4 border-amber-400 rounded-3xl p-6 shadow-[8px_8px_0px_#FFD166] flex flex-col justify-between h-[410px] relative scale-105 z-10 animate-in zoom-in-95 duration-300">
             <div className="absolute -top-5 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-cyber-yellow text-black font-black text-sm uppercase rounded-xl border-3 border-black shadow-[3px_3px_0px_#000] flex items-center gap-1.5 whitespace-nowrap">
               <Crown className="w-5 h-5" />
-              <span>🥇 TOP 1 TRENDING (+3,000 PTS)</span>
+              <span>🥇 QUÁN QUÂN TOP 1 TRENDING</span>
             </div>
 
             <div className="flex items-center gap-3 mt-4">
@@ -1081,7 +1050,7 @@ export default function Round1Host({
         {top3 && (
           <div className="order-3 md:order-3 bg-slate-900 border-4 border-black rounded-3xl p-5 shadow-[6px_6px_0px_#000] flex flex-col justify-between h-[310px] relative">
             <div className="absolute -top-4 left-6 px-3 py-1 bg-amber-700 text-white font-black text-xs uppercase rounded-lg border-2 border-black shadow-[2px_2px_0px_#000]">
-              🥉 TOP 3 TRENDING (+1,500 PTS)
+              🥉 QUÝ QUÂN TOP 3 TRENDING
             </div>
 
             <div className="flex items-center gap-3 mt-3">
