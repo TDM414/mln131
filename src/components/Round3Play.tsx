@@ -104,17 +104,24 @@ export default function Round3Play({
     setHasSubmittedStance(false);
     setHasSubmittedBet(false);
     soundPlayedRef.current = false;
-  }, [currentDilemma.id]);
+  }, [currentDilemma?.id, round3State?.currentDilemmaIndex]);
 
   // Synchronize from server state if already recorded
   useEffect(() => {
     if (round3State?.stances?.[playerId]) {
       setSelectedStance(round3State.stances[playerId]);
       setHasSubmittedStance(true);
+    } else {
+      setSelectedStance(null);
+      setHasSubmittedStance(false);
     }
+
     if (round3State?.consensusBets?.[playerId]) {
       setSelectedBet(round3State.consensusBets[playerId]);
       setHasSubmittedBet(true);
+    } else {
+      setSelectedBet(null);
+      setHasSubmittedBet(false);
     }
   }, [round3State?.stances, round3State?.consensusBets, playerId]);
 
@@ -208,7 +215,7 @@ export default function Round3Play({
   const isDraw = majority === 'DRAW';
 
   return (
-    <div className="h-[100dvh] w-full flex flex-col justify-between p-3.5 max-w-md mx-auto select-none bg-[#0B0F19] text-white overflow-hidden relative font-sans">
+    <div className="h-full w-full flex flex-col justify-between p-3.5 max-w-md mx-auto select-none bg-[#0B0F19] text-white overflow-hidden relative font-sans">
       {/* 1. TOP STATUS BAR */}
       <div className="flex items-center justify-between bg-slate-900 border-3 border-black p-2.5 rounded-2xl shadow-[3px_3px_0px_#000] shrink-0">
         <div className="flex items-center gap-2">
@@ -231,7 +238,7 @@ export default function Round3Play({
           )}
 
           <div className="px-2.5 py-1 bg-purple-500/20 border border-purple-500 rounded-lg text-[10px] font-black text-purple-300 uppercase">
-            MODE 3: TRƯNG CẦU
+            TÌNH HUỐNG {(round3State?.currentDilemmaIndex ?? 0) + 1} / 5
           </div>
         </div>
       </div>

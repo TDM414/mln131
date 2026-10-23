@@ -32,7 +32,7 @@ interface Round4HostProps {
   onAdvanceToPodium?: () => void;
 }
 
-const R4_QUESTIONS: TriviaQuestion[] = MLN131_QUESTIONS.slice(0, 5).map((q) => ({
+const R4_QUESTIONS: TriviaQuestion[] = MLN131_QUESTIONS.slice(0, 10).map((q) => ({
   id: q.id,
   topic: q.topic,
   scenario: q.scenario,
@@ -41,6 +41,18 @@ const R4_QUESTIONS: TriviaQuestion[] = MLN131_QUESTIONS.slice(0, 5).map((q) => (
   explanation: q.explanation,
   points: 10000,
 }));
+
+function getCardIcon(cardType: string): string {
+  switch (cardType) {
+    case 'DOUBLE_OR_NOTHING': return '💎';
+    case 'POINT_HEIST': return '💰';
+    case 'INK_SPLATTER': return '🦑';
+    case 'CYBER_SHIELD': return '🛡️';
+    case 'LAG_SPIKE': return '🥶';
+    case 'HACKER_EYE': return '👁️';
+    default: return '⚡';
+  }
+}
 
 export default function Round4Host({ state, onReturnToHub, onAdvanceToPodium }: Round4HostProps) {
   const players = Object.values(state.players || {});
@@ -53,7 +65,7 @@ export default function Round4Host({ state, onReturnToHub, onAdvanceToPodium }: 
     return state.round4State?.questions?.length ? state.round4State.questions : R4_QUESTIONS;
   }, [state.round4State?.questions]);
 
-  const totalQuestions = questionsList.length || 5;
+  const totalQuestions = questionsList.length || 10;
 
   // Initialize Round 4 on Server
   useEffect(() => {
@@ -315,7 +327,7 @@ export default function Round4Host({ state, onReturnToHub, onAdvanceToPodium }: 
                 <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
                   {Object.values(queuedSkills).map((s, idx) => (
                     <div key={idx} className="flex items-center gap-1.5 px-3 py-1 bg-slate-800 rounded-lg border border-slate-700 text-xs font-bold text-white shadow-sm">
-                      <span>{s.cardType === 'DOUBLE_OR_NOTHING' ? '💎' : s.cardType === 'POINT_HEIST' ? '💰' : s.cardType === 'INK_SPLATTER' ? '🦑' : '🛡️'}</span>
+                      <span>{getCardIcon(s.cardType)}</span>
                       <span className="text-cyber-yellow">{s.playerName}</span>
                       <span className="text-slate-400 text-[10px]">➔ {s.isSelfTarget ? 'Bản thân' : s.targetPlayerName}</span>
                     </div>
@@ -412,7 +424,7 @@ export default function Round4Host({ state, onReturnToHub, onAdvanceToPodium }: 
                     >
                       <div className="flex items-center gap-2.5">
                         <span className="text-2xl">
-                          {s.cardType === 'DOUBLE_OR_NOTHING' ? '💎' : s.cardType === 'POINT_HEIST' ? '💰' : s.cardType === 'INK_SPLATTER' ? '🦑' : '🛡️'}
+                          {getCardIcon(s.cardType)}
                         </span>
                         <div>
                           <div className="font-black text-sm text-white flex items-center gap-1.5">

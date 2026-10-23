@@ -231,7 +231,7 @@ export default function Round2Play({
 
   return (
     <div
-      className={`relative h-[100dvh] w-full flex flex-col justify-between overflow-hidden bg-slate-950 text-white select-none transition-all duration-300 ${
+      className={`relative h-full w-full flex flex-col justify-between overflow-hidden bg-slate-950 text-white select-none transition-all duration-300 ${
         isGhost ? 'bg-gradient-to-b from-purple-950/40 to-slate-950' : ''
       }`}
     >

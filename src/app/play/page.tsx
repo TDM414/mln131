@@ -332,26 +332,37 @@ function MobileControllerContent() {
         </div>
       )}
 
-      {/* TOP HEADER: Player Profile & Room Status */}
-      <div className="flex items-center justify-between bg-cyber-card border-3 border-black rounded-2xl px-3 py-2 shadow-[3px_3px_0px_#000] shrink-0">
-        <div className="flex items-center gap-2.5">
+      {/* TOP HEADER: Player Profile & Room Status & Persistent Score */}
+      <div className="flex items-center justify-between bg-cyber-card border-3 border-black rounded-2xl px-3 py-2 shadow-[3px_3px_0px_#000] shrink-0 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="w-10 h-10 shrink-0 rounded-xl overflow-hidden bg-black flex items-center justify-center border border-black">
             <AvatarSvg size={38} />
           </div>
-          <div>
-            <div className="text-xs font-black text-white truncate max-w-[130px] leading-tight">
+          <div className="min-w-0">
+            <div className="text-xs font-black text-white truncate max-w-[95px] leading-tight">
               {playerName}
             </div>
-            <div className="text-[10px] text-cyber-yellow font-bold truncate">
+            <div className="text-[10px] text-slate-400 font-bold truncate">
               {selectedAvatar.name}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* PERSISTENT LIVE TOTAL SCORE BADGE */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-cyber-yellow/15 border-2 border-cyber-yellow rounded-xl shadow-[2px_2px_0px_#000] shrink-0">
+          <span className="text-base">🪙</span>
           <div className="text-right">
-            <div className="text-[9px] text-slate-400 font-bold uppercase">PHÒNG</div>
-            <div className="text-xs font-mono font-black text-cyber-cyan">{roomCode}</div>
+            <div className="text-[8px] text-amber-300 font-black uppercase leading-none">ĐIỂM CỦA BẠN</div>
+            <div className="text-xs font-black font-mono text-cyber-yellow leading-tight">
+              {(gameState.players?.[playerId]?.score || 0).toLocaleString()} <span className="text-[8px]">PTS</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="text-right">
+            <div className="text-[8px] text-slate-400 font-bold uppercase leading-none">PHÒNG</div>
+            <div className="text-[11px] font-mono font-black text-cyber-cyan">{roomCode}</div>
           </div>
 
           <button
@@ -361,7 +372,7 @@ function MobileControllerContent() {
                 setIsJoined(false);
               }
             }}
-            className="text-[10px] text-slate-400 hover:text-white px-2 py-1 bg-slate-800 rounded-lg border border-slate-700"
+            className="text-[9px] text-slate-400 hover:text-white px-1.5 py-1 bg-slate-800 rounded-lg border border-slate-700 cursor-pointer"
           >
             Đổi tên
           </button>

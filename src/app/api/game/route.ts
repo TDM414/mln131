@@ -490,11 +490,14 @@ export async function POST(req: NextRequest) {
               }
             }
           }
-        } else if (targetPhase === 'VOTING') {
+        } else if (targetPhase === 'VOTING' || targetPhase === 'DILEMMA_INTRO') {
           room.round3State.stances = {};
           room.round3State.consensusBets = {};
           room.round3State.playerChoices = {};
           room.round3State.tally = { countA: 0, countB: 0, percentA: 50, percentB: 50, majority: 'DRAW' };
+          if (typeof payload?.currentDilemmaIndex === 'number') {
+            room.round3State.currentDilemmaIndex = payload.currentDilemmaIndex;
+          }
         }
       }
 
@@ -509,6 +512,12 @@ export async function POST(req: NextRequest) {
           // Reset answers and queued skills for this new question
           room.round4State.playerAnswers = {};
           room.round4State.queuedSkills = {};
+          for (const p of Object.values(room.players)) {
+            if (p.r4Debuffs) {
+              p.r4Debuffs.isFrozen = false;
+              p.r4Debuffs.eliminatedOptions = undefined;
+            }
+          }
         } else if (targetPhase === 'CARD_ATTACK') {
           room.round4State.phase = 'CARD_ATTACK';
         } else if (targetPhase === 'QUESTION' || targetPhase === 'TRIVIA_QUESTION') {
@@ -583,6 +592,26 @@ export async function POST(req: NextRequest) {
                 }
               } else if (skill.cardType === 'CYBER_SHIELD') {
                 skill.detail = `Khiên kích hoạt thành công, bảo vệ an toàn!`;
+              } else if (skill.cardType === 'LAG_SPIKE') {
+                const targetPlayer = room.players[skill.targetPlayerId];
+                if (targetPlayer && targetPlayer.id !== player.id) {
+                  const targetSkill = queued[targetPlayer.id];
+                  const targetAnswer = answers[targetPlayer.id];
+                  const targetShielded = targetSkill?.cardType === 'CYBER_SHIELD' && targetAnswer?.isCorrect;
+
+                  if (targetShielded) {
+                    skill.status = 'CANCELLED';
+                    skill.detail = `${targetPlayer.name} có Khiên Bảo Vệ chặn Đóng Băng!`;
+                  } else {
+                    if (!targetPlayer.r4Debuffs) {
+                      targetPlayer.r4Debuffs = { inkWipesLeft: 0, isBlindedByInk: false, multiplier: 1 };
+                    }
+                    targetPlayer.r4Debuffs.isFrozen = true;
+                    skill.detail = `Đóng băng phím thành công 3s lên ${targetPlayer.name} ở câu tiếp theo!`;
+                  }
+                }
+              } else if (skill.cardType === 'HACKER_EYE') {
+                skill.detail = `Mắt Thần kích hoạt thành công, loại bỏ 2 đáp án sai!`;
               }
 
               // Append to activeSabotages for projector animation
@@ -995,7 +1024,12 @@ export async function POST(req: NextRequest) {
     } = payload;
     const sId = fromPlayerId || sourceId;
     const sName = fromPlayerName || sourceName || 'Ẩn danh';
-    const isSelf = Boolean(isSelfTarget || cardType === 'DOUBLE_OR_NOTHING' || cardType === 'CYBER_SHIELD');
+    const isSelf = Boolean(
+      isSelfTarget ||
+      cardType === 'DOUBLE_OR_NOTHING' ||
+      cardType === 'CYBER_SHIELD' ||
+      cardType === 'HACKER_EYE'
+    );
     const tId = isSelf ? sId : (targetPlayerId || targetId || sId);
     const targetPlayer = room.players[tId];
     const tName = isSelf ? (sName + ' (Chính mình)') : (targetPlayer?.name || 'Đối thủ');

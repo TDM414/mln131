@@ -41,6 +41,9 @@ export interface Player {
     inkWipesLeft?: number;
     multiplier?: number; // 2 for double or nothing
     hasShield?: boolean;
+    isFrozen?: boolean;
+    frozenUntil?: number;
+    eliminatedOptions?: number[];
   };
 }
 
@@ -367,7 +370,9 @@ export type SabotageCardType =
   | 'POINT_HEIST'
   | 'TROLL_QUESTION'
   | 'DOUBLE_OR_NOTHING'
-  | 'CYBER_SHIELD';
+  | 'CYBER_SHIELD'
+  | 'LAG_SPIKE'
+  | 'HACKER_EYE';
 
 export interface SabotageCard {
   id: string;

@@ -55,9 +55,9 @@ export default function Round3Host({
 }: Round3HostProps) {
   const round3State = state.round3State;
 
-  // Curated 3 dilemmas from MLN131_CONSENSUS_DILEMMAS
+  // Curated 5 dilemmas from MLN131_CONSENSUS_DILEMMAS
   const dilemmas: DilemmaItem[] = useMemo(() => {
-    return MLN131_CONSENSUS_DILEMMAS.slice(0, 3);
+    return MLN131_CONSENSUS_DILEMMAS.slice(0, 5);
   }, []);
 
   const currentDilemmaIndex = round3State?.currentDilemmaIndex ?? 0;
@@ -324,6 +324,7 @@ export default function Round3Host({
         dilemma: currentDilemma,
         stances: {},
         consensusBets: {},
+        playerChoices: {},
         tally: { countA: 0, countB: 0, percentA: 50, percentB: 50, majority: 'DRAW' },
       },
     });
@@ -344,6 +345,7 @@ export default function Round3Host({
         dilemma: selected,
         stances: {},
         consensusBets: {},
+        playerChoices: {},
         tally: { countA: 0, countB: 0, percentA: 50, percentB: 50, majority: 'DRAW' },
       },
     });
@@ -363,6 +365,7 @@ export default function Round3Host({
         dilemma: dilemmas[nextIdx],
         stances: {},
         consensusBets: {},
+        playerChoices: {},
         tally: { countA: 0, countB: 0, percentA: 50, percentB: 50, majority: 'DRAW' },
       },
     });
@@ -875,7 +878,7 @@ export default function Round3Host({
               <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <span className="px-3 py-1.5 bg-cyber-yellow text-black font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_#000]">
-                    ⚖️ TÌNH HUỐNG {currentDilemmaIndex + 1} / 3
+                    ⚖️ TÌNH HUỐNG {currentDilemmaIndex + 1} / {dilemmas.length}
                   </span>
 
                   <button

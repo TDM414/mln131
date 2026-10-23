@@ -136,20 +136,35 @@ export function mergeMonotonicState<T extends Partial<GameShowState>>(
     } as any;
   }
 
-  // 6. Monotonic Round 3 Guard
+  // 6. Monotonic Round 3 Guard (Stances, bets, and choices MUST reset when dilemma advances)
   let mergedRound3 = prev.round3State ? { ...prev.round3State } : incoming.round3State ? { ...incoming.round3State } : undefined;
   if (incoming.round3State) {
+    const prevDIdx = prev.round3State?.currentDilemmaIndex ?? 0;
+    const incDIdx = incoming.round3State.currentDilemmaIndex ?? 0;
+    const isNewDilemma = incDIdx !== prevDIdx;
+
     mergedRound3 = {
       ...(prev.round3State || {}),
       ...incoming.round3State,
-      stances: {
-        ...(prev.round3State?.stances || {}),
-        ...(incoming.round3State.stances || {}),
-      },
-      consensusBets: {
-        ...(prev.round3State?.consensusBets || {}),
-        ...(incoming.round3State.consensusBets || {}),
-      },
+      currentDilemmaIndex: incDIdx,
+      stances: isNewDilemma
+        ? (incoming.round3State.stances || {})
+        : {
+            ...(prev.round3State?.stances || {}),
+            ...(incoming.round3State.stances || {}),
+          },
+      consensusBets: isNewDilemma
+        ? (incoming.round3State.consensusBets || {})
+        : {
+            ...(prev.round3State?.consensusBets || {}),
+            ...(incoming.round3State.consensusBets || {}),
+          },
+      playerChoices: isNewDilemma
+        ? (incoming.round3State.playerChoices || {})
+        : {
+            ...(prev.round3State?.playerChoices || {}),
+            ...(incoming.round3State.playerChoices || {}),
+          },
     } as any;
   }
 
