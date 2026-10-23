@@ -15,10 +15,14 @@ export const STATUS_RANK: Record<GameStatus, number> = {
 export const R1_PHASE_RANK: Record<string, number> = {
   'PROMPT': 0,
   'PROMPT_BROADCAST': 0,
+  'ROAST_INPUT': 0,
+  'SUBMITTING': 0,
+  'COMMENT_INPUT': 0,
   'FEED_REACTION': 1,
-  'TOP_TRENDING': 2,
-  'TRENDING_REVEAL': 2,
-  'ROUND_SUMMARY': 2,
+  'POST_REVEAL': 2,
+  'TOP_TRENDING': 3,
+  'TRENDING_REVEAL': 3,
+  'ROUND_SUMMARY': 3,
 };
 
 /**
@@ -81,18 +85,26 @@ export function mergeMonotonicState<T extends Partial<GameShowState>>(
   let mergedRound1 = prev.round1State ? { ...prev.round1State } : incoming.round1State ? { ...incoming.round1State } : undefined;
   if (incoming.round1State) {
     const incR1 = incoming.round1State;
-    const currentPhaseRank = R1_PHASE_RANK[prev.round1State?.phase || 'PROMPT'] ?? 0;
-    const incPhaseRank = R1_PHASE_RANK[incR1.phase || 'PROMPT'] ?? 0;
-    const targetPhase = incPhaseRank >= currentPhaseRank ? incR1.phase : prev.round1State?.phase || 'PROMPT';
+    const prevPromptIdx = prev.round1State?.currentPromptIndex ?? 0;
+    const incPromptIdx = incR1.currentPromptIndex ?? 0;
+    const isNewPrompt = incPromptIdx > prevPromptIdx;
+
+    let targetPhase = prev.round1State?.phase || 'PROMPT';
+    if (isNewPrompt) {
+      // Advancing to next prompt: allow returning to PROMPT phase
+      targetPhase = incR1.phase || 'PROMPT';
+    } else if (incPromptIdx === prevPromptIdx) {
+      // Within the same prompt: enforce monotonic progression
+      const currentPhaseRank = R1_PHASE_RANK[prev.round1State?.phase || 'PROMPT'] ?? 0;
+      const incPhaseRank = R1_PHASE_RANK[incR1.phase || 'PROMPT'] ?? 0;
+      targetPhase = incPhaseRank >= currentPhaseRank ? (incR1.phase || 'PROMPT') : (prev.round1State?.phase || 'PROMPT');
+    }
 
     mergedRound1 = {
       ...(prev.round1State || {}),
       ...incR1,
       phase: targetPhase,
-      currentPromptIndex: Math.max(
-        prev.round1State?.currentPromptIndex || 0,
-        incR1.currentPromptIndex || 0
-      ),
+      currentPromptIndex: Math.max(prevPromptIdx, incPromptIdx),
       comments: {
         ...(prev.round1State?.comments || {}),
         ...(incR1.comments || {}),

@@ -41,9 +41,12 @@ export default function Round1Play({
 
   // Map phase
   const rawPhase = round1State?.phase || 'PROMPT';
-  const phase: 'PROMPT' | 'FEED_REACTION' | 'TOP_TRENDING' = useMemo(() => {
+  const phase: 'PROMPT' | 'FEED_REACTION' | 'POST_REVEAL' | 'TOP_TRENDING' = useMemo(() => {
     if (rawPhase === 'FEED_REACTION') {
       return 'FEED_REACTION';
+    }
+    if (rawPhase === 'POST_REVEAL') {
+      return 'POST_REVEAL';
     }
     if (
       rawPhase === 'TOP_TRENDING' ||
@@ -91,12 +94,17 @@ export default function Round1Play({
     );
   }, [commentsList, playerId, currentPromptIndex]);
 
-  // Strict local 30s countdown for current prompt
-  const [promptTimeLeft, setPromptTimeLeft] = useState<number>(30);
+  // Comments for THIS specific prompt only
+  const promptComments = useMemo(() => {
+    return commentsList.filter((c) => (c.promptIndex ?? 0) === currentPromptIndex);
+  }, [commentsList, currentPromptIndex]);
+
+  // Strict local 25s countdown for current prompt
+  const [promptTimeLeft, setPromptTimeLeft] = useState<number>(25);
 
   useEffect(() => {
     if (phase !== 'PROMPT') return;
-    setPromptTimeLeft(30);
+    setPromptTimeLeft(25);
     const interval = setInterval(() => {
       setPromptTimeLeft((prev) => {
         if (prev <= 1) {
@@ -427,7 +435,7 @@ export default function Round1Play({
   }
 
   // ============================================================
-  // PHASE 2: FEED_REACTION (30s)
+  // PHASE 2: FEED_REACTION (15s)
   // ============================================================
   if (phase === 'FEED_REACTION') {
     return (
@@ -437,12 +445,14 @@ export default function Round1Play({
           <div className="flex items-center gap-1.5">
             <span className="text-base">🔥</span>
             <div>
-              <div className="text-xs font-black text-white leading-tight">LƯỚT FEED & THẢ BÃO REACTION</div>
+              <div className="text-xs font-black text-white leading-tight">
+                BÀI #{currentPromptIndex + 1}/3: BÃO REACTION
+              </div>
               <div className="text-[10px] text-cyber-yellow font-bold">Thả Tim (+1), Cà Chua (+1), Quăng Gạch (+1)</div>
             </div>
           </div>
           <span className="px-2 py-0.5 bg-rose-500 text-white font-mono font-black text-xs rounded-md border border-black">
-            30s
+            15s
           </span>
         </div>
 
@@ -468,8 +478,13 @@ export default function Round1Play({
             </div>
           )}
 
-          {/* List of other student comments */}
-          {commentsList.map((comment) => {
+          {/* List of other student comments for THIS prompt */}
+          {promptComments.length === 0 && !myExistingComment ? (
+            <div className="text-center py-8 text-slate-400 text-xs font-bold">
+              Chưa có bình luận nào cho bài này, hãy nhìn lên máy chiếu nhé!
+            </div>
+          ) : (
+            promptComments.map((comment) => {
             const isMe = comment.authorId === playerId;
             if (isMe) return null; // already shown on top
 
@@ -551,14 +566,101 @@ export default function Round1Play({
                 </div>
               </div>
             );
-          })}
+          })
+          )}
         </div>
       </div>
     );
   }
 
   // ============================================================
-  // PHASE 3: TOP_TRENDING / SUMMARY
+  // PHASE 3: POST_REVEAL (Spotlight for current prompt)
+  // ============================================================
+  if (phase === 'POST_REVEAL') {
+    return (
+      <div className="w-full h-full flex flex-col justify-between p-3.5 select-none overflow-y-auto">
+        {/* Top Header */}
+        <div className="text-center pt-1 mb-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400 text-black font-black text-xs uppercase rounded-lg border-2 border-black shadow-[2px_2px_0px_#000] mb-1">
+            <Crown className="w-3.5 h-3.5" />
+            <span>KẾT QUẢ BÀI VIẾT #{currentPromptIndex + 1}/3</span>
+          </div>
+          <h3 className="text-xl font-black text-white">ĐÃ CHỐT SỔ REACTION! 🎉</h3>
+          <p className="text-xs text-cyber-cyan font-bold mt-1">
+            Hướng mắt lên máy chiếu để xem Top 3 bình luận gây bão nhé!
+          </p>
+        </div>
+
+        {/* Personal Score / Comment Card for THIS Prompt */}
+        <div className="bg-[#141A29] border-3 border-black rounded-2xl p-4 shadow-[4px_4px_0px_#000] my-auto">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-black text-cyber-yellow uppercase">BÌNH LUẬN BÀI NÀY CỦA BẠN</span>
+          </div>
+
+          {myExistingComment ? (
+            <div>
+              <div className="p-3 bg-black/60 rounded-xl border border-slate-800 text-sm font-black text-white italic mb-3 leading-snug">
+                &ldquo;{myExistingComment.text}&rdquo;
+              </div>
+
+              {/* Reactions breakdown */}
+              <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                <div className="p-2 bg-rose-500/20 border border-rose-500/40 rounded-xl">
+                  <div className="text-base font-black text-rose-300">{myExistingComment.reactions?.heart || 0}</div>
+                  <div className="text-[10px] text-slate-400 font-bold">❤️ Tim</div>
+                </div>
+
+                <div className="p-2 bg-amber-500/20 border border-amber-500/40 rounded-xl">
+                  <div className="text-base font-black text-amber-300">{myExistingComment.reactions?.tomato || 0}</div>
+                  <div className="text-[10px] text-slate-400 font-bold">🍅 Cà chua</div>
+                </div>
+
+                <div className="p-2 bg-cyan-500/20 border border-cyan-500/40 rounded-xl">
+                  <div className="text-base font-black text-cyan-300">{myExistingComment.reactions?.brick || 0}</div>
+                  <div className="text-[10px] text-slate-400 font-bold">🧱 Gạch</div>
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/50 rounded-xl text-center">
+                <div className="text-xs text-emerald-300 font-bold">
+                  Bạn nhận được <span className="text-cyber-yellow font-black text-sm">{myTotalReactions}</span> lượt thả biểu cảm từ cả lớp!
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-xs text-slate-400 font-bold">
+              Bạn chưa gửi bình luận cho bài này! Hãy sẵn sàng cho bài tiếp theo nhé.
+            </div>
+          )}
+        </div>
+
+        {/* Danmaku interactive bar */}
+        <div className="bg-black/50 border border-slate-800 rounded-xl p-2.5 mt-2">
+          <div className="text-[10px] text-slate-400 font-bold uppercase text-center mb-1.5">
+            Bắn biểu cảm lên máy chiếu chúc mừng Top cmt:
+          </div>
+          <div className="grid grid-cols-6 gap-1.5">
+            {DANMAKU_QUICK_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => handleSendDanmaku(emoji)}
+                className="py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-black rounded-lg text-lg flex items-center justify-center transition shadow-[2px_2px_0px_#000]"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="text-center text-xs text-slate-400 font-bold mt-2">
+          ⏳ Chuẩn bị chuyển sang bài tiếp theo...
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // PHASE 4: TOP_TRENDING / SUMMARY
   // ============================================================
   const top1Comment = sortedComments[0];
 

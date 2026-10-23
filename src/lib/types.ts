@@ -73,6 +73,7 @@ export type Round1Phase =
   | 'SUBMITTING'
   | 'COMMENT_INPUT'
   | 'FEED_REACTION'
+  | 'POST_REVEAL'
   | 'TOP_TRENDING'
   | 'TRENDING_REVEAL';
 

@@ -52,11 +52,12 @@ export default function Round1Host({
 
   // Map legacy phases to Mode 1 standard phases
   const rawPhase = round1State?.phase || 'PROMPT';
-  const phase: 'PROMPT' | 'FEED_REACTION' | 'TOP_TRENDING' = useMemo(() => {
-    if (
-      rawPhase === 'FEED_REACTION'
-    ) {
+  const phase: 'PROMPT' | 'FEED_REACTION' | 'POST_REVEAL' | 'TOP_TRENDING' = useMemo(() => {
+    if (rawPhase === 'FEED_REACTION') {
       return 'FEED_REACTION';
+    }
+    if (rawPhase === 'POST_REVEAL') {
+      return 'POST_REVEAL';
     }
     if (
       rawPhase === 'TOP_TRENDING' ||
@@ -69,9 +70,11 @@ export default function Round1Host({
   }, [rawPhase]);
 
   // Phase Timers
-  const [promptTimer, setPromptTimer] = useState<number>(30);
-  const [reactionTimer, setReactionTimer] = useState<number>(30);
+  const [promptTimer, setPromptTimer] = useState<number>(25);
+  const [reactionTimer, setReactionTimer] = useState<number>(15);
+  const [revealTimer, setRevealTimer] = useState<number>(8);
   const hasAwardedBonusRef = useRef<boolean>(false);
+  const awardedPromptsRef = useRef<Set<number>>(new Set());
   const previousReactionsTotalRef = useRef<number>(0);
 
   // Live submission notice toast
@@ -133,6 +136,20 @@ export default function Round1Host({
     return set;
   }, [commentsList, currentPromptIndex]);
 
+  // Current Prompt Comments
+  const currentPromptComments = useMemo(() => {
+    return commentsList.filter((c) => (c.promptIndex ?? 0) === currentPromptIndex);
+  }, [commentsList, currentPromptIndex]);
+
+  // Sorted Comments of THIS prompt by Total Reactions (heart + tomato + brick)
+  const sortedCurrentPromptComments = useMemo(() => {
+    return [...currentPromptComments].sort((a, b) => {
+      const sumA = (a.reactions?.heart || 0) + (a.reactions?.tomato || 0) + (a.reactions?.brick || 0);
+      const sumB = (b.reactions?.heart || 0) + (b.reactions?.tomato || 0) + (b.reactions?.brick || 0);
+      return sumB - sumA;
+    });
+  }, [currentPromptComments]);
+
   // Sorted Comments by Total Reactions (heart + tomato + brick)
   const sortedComments = useMemo(() => {
     return [...commentsList].sort((a, b) => {
@@ -182,21 +199,21 @@ export default function Round1Host({
   }, [phase, promptTimer]);
 
   // ============================================================
-  // PHASE 2: FEED_REACTION COUNTDOWN (30s)
+  // PHASE 2: FEED_REACTION COUNTDOWN (15s)
   // ============================================================
   useEffect(() => {
     if (phase !== 'FEED_REACTION') return;
 
     if (reactionTimer <= 0) {
-      handleTransitionToTrending();
+      handleTransitionToPostReveal();
       return;
     }
 
     const interval = setInterval(() => {
       setReactionTimer((prev) => {
-        if (prev <= 8 && prev > 1) {
+        if (prev <= 6 && prev > 1) {
           sound.playCountdownTick(true);
-        } else if (prev > 8 && prev % 3 === 0) {
+        } else if (prev > 6 && prev % 3 === 0) {
           sound.playCountdownTick(false);
         }
         return prev - 1;
@@ -207,7 +224,68 @@ export default function Round1Host({
   }, [phase, reactionTimer]);
 
   // ============================================================
-  // PHASE 3: TOP_TRENDING CELEBRATION & BONUS SCORING
+  // PHASE 3: POST_REVEAL SPOTLIGHT & PROMPT BONUS (8s)
+  // ============================================================
+  useEffect(() => {
+    if (phase !== 'POST_REVEAL') return;
+
+    // Play fanfare and confetti
+    sound.playTrollHorn();
+    setTimeout(() => {
+      sound.playVictoryFanfare();
+    }, 500);
+
+    confetti({
+      particleCount: 120,
+      spread: 90,
+      origin: { y: 0.55 },
+      colors: ['#FFD166', '#06D6A0', '#EF233C', '#7209B7', '#4CC9F0'],
+    });
+
+    // Award Prompt Top 3 bonus (+1000, +600, +300)
+    if (!awardedPromptsRef.current.has(currentPromptIndex) && sortedCurrentPromptComments.length > 0) {
+      awardedPromptsRef.current.add(currentPromptIndex);
+      const updatedPlayers = { ...state.players };
+      let hasChanges = false;
+
+      sortedCurrentPromptComments.slice(0, 3).forEach((comment, idx) => {
+        const bonus = idx === 0 ? 1000 : idx === 1 ? 600 : 300;
+        const authorId = comment.authorId;
+        if (bonus > 0 && authorId && updatedPlayers[authorId]) {
+          const currentP = { ...updatedPlayers[authorId] };
+          currentP.score = (currentP.score || 0) + bonus;
+          currentP.roundScores = {
+            ...currentP.roundScores,
+            ROUND_1: (currentP.roundScores?.ROUND_1 || 0) + bonus,
+          };
+          updatedPlayers[authorId] = currentP;
+          hasChanges = true;
+        }
+      });
+
+      if (hasChanges) {
+        sync.hostUpdateState({ players: updatedPlayers });
+      }
+    }
+
+    // Auto-advance after 8 seconds
+    setRevealTimer(8);
+    const interval = setInterval(() => {
+      setRevealTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          handleAdvanceFromPostReveal();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [phase, currentPromptIndex, sortedCurrentPromptComments]);
+
+  // ============================================================
+  // PHASE 4: TOP_TRENDING CELEBRATION & BONUS SCORING
   // ============================================================
   useEffect(() => {
     if (phase !== 'TOP_TRENDING') {
@@ -229,7 +307,7 @@ export default function Round1Host({
       colors: ['#FFD166', '#06D6A0', '#EF233C', '#7209B7', '#4CC9F0'],
     });
 
-    // Award Top Trending bonus (Top 1: +3000, Top 2: +2000, Top 3: +1500, Top 4-10: +500)
+    // Award Top Trending bonus for overall top winners
     if (!hasAwardedBonusRef.current && sortedComments.length > 0) {
       hasAwardedBonusRef.current = true;
       const updatedPlayers = { ...state.players };
@@ -237,10 +315,10 @@ export default function Round1Host({
 
       sortedComments.forEach((comment, idx) => {
         let bonus = 0;
-        if (idx === 0) bonus = 3000;
-        else if (idx === 1) bonus = 2000;
-        else if (idx === 2) bonus = 1500;
-        else if (idx < 10) bonus = 500;
+        if (idx === 0) bonus = 2000;
+        else if (idx === 1) bonus = 1500;
+        else if (idx === 2) bonus = 1000;
+        else if (idx < 8) bonus = 300;
 
         const authorId = comment.authorId;
         if (bonus > 0 && authorId && updatedPlayers[authorId]) {
@@ -263,45 +341,28 @@ export default function Round1Host({
 
   // Transition Helpers
   const handleTransitionFromPrompt = async () => {
-    // 3 drama posts: index 0, 1, 2
-    if (currentPromptIndex < 2 && currentPromptIndex + 1 < prompts.length) {
-      const nextPromptIndex = currentPromptIndex + 1;
-      const nextPrompt = prompts[nextPromptIndex];
-      sound.playTrollHorn();
-      setPromptTimer(30);
-
-      await sync.hostUpdateState({
-        round1State: {
-          ...round1State,
-          phase: 'PROMPT',
-          currentPromptIndex: nextPromptIndex,
-          prompt: nextPrompt,
-        },
-      });
-      await sync.setRoundPhase('PROMPT');
-    } else {
-      await handleTransitionToReaction();
-    }
-  };
-
-  const handleTransitionToReaction = async () => {
-    // If fewer than 2 comments submitted, seed with realistic mock comments from bank
     let currentComments = { ...rawComments };
-    if (Object.keys(currentComments).length < 2) {
+    const thisPromptComments = Object.values(currentComments).filter(
+      (c) => (c.promptIndex ?? 0) === currentPromptIndex
+    );
+
+    // If fewer than 2 comments submitted for this prompt, seed with realistic mock comments
+    if (thisPromptComments.length < 2) {
       const mockAvatars = ['keyboard_warrior', 'genz_slang_queen', 'fact_checker', 'righteous_netizen'];
       const mockNames = ['Tuấn Anh', 'Khánh Linh', 'Minh Quân', 'Hải Yến'];
-      const mockRoasts = VIETNAMESE_ROAST_BANK.slice(0, 4);
+      const mockRoasts = VIETNAMESE_ROAST_BANK;
 
-      for (let i = 0; i < mockRoasts.length; i++) {
-        const mockId = `mock_c_${i + 1}`;
+      for (let i = 0; i < 4; i++) {
+        const mockId = `mock_p${currentPromptIndex}_c${i + 1}`;
         if (!currentComments[mockId]) {
           currentComments[mockId] = {
             id: mockId,
             authorId: `bot_${i + 1}`,
-            authorName: mockNames[i % mockNames.length],
-            avatarId: mockAvatars[i % mockAvatars.length],
-            text: mockRoasts[i],
+            authorName: mockNames[(i + currentPromptIndex) % mockNames.length],
+            avatarId: mockAvatars[(i + currentPromptIndex) % mockAvatars.length],
+            text: mockRoasts[(i + currentPromptIndex * 3) % mockRoasts.length],
             timestamp: Date.now(),
+            promptIndex: currentPromptIndex,
             reactions: {
               heart: Math.floor(Math.random() * 4) + 1,
               tomato: Math.floor(Math.random() * 2),
@@ -313,16 +374,52 @@ export default function Round1Host({
       }
     }
 
-    setReactionTimer(30);
+    setReactionTimer(15);
     sound.playTrollHorn();
     await sync.hostUpdateState({
       round1State: {
         ...round1State,
         phase: 'FEED_REACTION',
+        currentPromptIndex,
         comments: currentComments,
       },
     });
-    await sync.setRoundPhase('FEED_REACTION');
+    await sync.setRoundPhase('FEED_REACTION', { currentPromptIndex });
+  };
+
+  const handleTransitionToPostReveal = async () => {
+    setRevealTimer(8);
+    sound.playVictoryFanfare();
+    await sync.hostUpdateState({
+      round1State: {
+        ...round1State,
+        phase: 'POST_REVEAL',
+        currentPromptIndex,
+      },
+    });
+    await sync.setRoundPhase('POST_REVEAL', { currentPromptIndex });
+  };
+
+  const handleAdvanceFromPostReveal = async () => {
+    // 3 drama posts: index 0, 1, 2
+    if (currentPromptIndex < 2 && currentPromptIndex + 1 < prompts.length) {
+      const nextPromptIndex = currentPromptIndex + 1;
+      const nextPrompt = prompts[nextPromptIndex];
+      sound.playTrollHorn();
+      setPromptTimer(25);
+
+      await sync.hostUpdateState({
+        round1State: {
+          ...round1State,
+          phase: 'PROMPT',
+          currentPromptIndex: nextPromptIndex,
+          prompt: nextPrompt,
+        },
+      });
+      await sync.setRoundPhase('PROMPT', { currentPromptIndex: nextPromptIndex });
+    } else {
+      await handleTransitionToTrending();
+    }
   };
 
   const handleTransitionToTrending = async () => {
@@ -342,9 +439,11 @@ export default function Round1Host({
     sound.playCorrectChime();
     const nextPromptIndex = 0;
     const nextPrompt = prompts[nextPromptIndex];
-    setPromptTimer(30);
-    setReactionTimer(30);
+    setPromptTimer(25);
+    setReactionTimer(15);
+    setRevealTimer(8);
     hasAwardedBonusRef.current = false;
+    awardedPromptsRef.current.clear();
 
     await sync.hostUpdateState({
       round1State: {
@@ -432,9 +531,7 @@ export default function Round1Host({
               className="flex items-center gap-1.5 px-4 py-2 bg-emerald-400 hover:bg-emerald-300 text-black font-black text-xs md:text-sm rounded-xl border-2 border-black shadow-[3px_3px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
             >
               <FastForward className="w-4 h-4" />
-              <span>
-                {currentPromptIndex < 2 ? `Sang Bài Phốt #${currentPromptIndex + 2} ➔` : 'Chuyển Sang Lướt Feed ➔'}
-              </span>
+              <span>Chốt & Thả Bão Reaction Bài #{currentPromptIndex + 1} ➔</span>
             </button>
 
             {/* Extend Time Button */}
@@ -653,28 +750,28 @@ export default function Round1Host({
               </div>
             </div>
 
-            {/* Advance to Top Trending */}
+            {/* Advance to Post Reveal */}
             <button
-              onClick={handleTransitionToTrending}
+              onClick={handleTransitionToPostReveal}
               className="flex items-center gap-1.5 px-4 py-2 bg-cyber-yellow hover:bg-amber-300 text-black font-black text-xs md:text-sm rounded-xl border-2 border-black shadow-[3px_3px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
             >
               <Trophy className="w-4 h-4" />
-              <span>Xem Top Trending</span>
+              <span>Chốt Vote & Xem Top Bài #{currentPromptIndex + 1} ➔</span>
             </button>
           </div>
         </div>
 
-        {/* Middle: Live Newsfeed Wall (Grid / Masonry of student comments) */}
+        {/* Middle: Live Newsfeed Wall (Grid / Masonry of student comments for THIS prompt) */}
         <div className="flex-1 overflow-y-auto my-3 pr-2 scrollbar-thin scrollbar-thumb-slate-700">
-          {commentsList.length === 0 ? (
+          {currentPromptComments.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-8">
               <span className="text-6xl mb-3 animate-bounce">📱</span>
-              <h3 className="text-2xl font-black text-white mb-2">Đang tải Tường Bình Luận...</h3>
+              <h3 className="text-2xl font-black text-white mb-2">Đang tải Tường Bình Luận Bài #{currentPromptIndex + 1}...</h3>
               <p className="text-slate-400 text-sm">Hãy dùng điện thoại để bắn bình luận đầu tiên lên màn hình!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {commentsList.map((comment, index) => {
+              {currentPromptComments.map((comment, index) => {
                 const avatar = getAvatarById(comment.avatarId || 'keyboard_warrior');
                 const SvgComp = avatar.SvgComponent;
                 const totalReactions =
@@ -754,7 +851,142 @@ export default function Round1Host({
   }
 
   // ============================================================
-  // RENDER PHASE 3: TOP TRENDING REVEAL & PODIUM
+  // RENDER PHASE 3: POST_REVEAL SPOTLIGHT (Top 3 Comments of Current Post)
+  // ============================================================
+  if (phase === 'POST_REVEAL') {
+    const top3 = sortedCurrentPromptComments.slice(0, 3);
+    const isLastPost = currentPromptIndex >= 2;
+
+    return (
+      <div className="w-full h-full flex flex-col justify-between p-4 md:p-6 max-w-7xl mx-auto select-none overflow-hidden">
+        {/* Top Control Bar */}
+        <div className="flex items-center justify-between bg-black/70 backdrop-blur border-3 border-black rounded-2xl px-5 py-3 shadow-[4px_4px_0px_#000] shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="px-3 py-1 bg-amber-400 text-black font-black text-xs md:text-sm uppercase tracking-wider rounded-lg border-2 border-black shadow-[2px_2px_0px_#000] flex items-center gap-1.5">
+              <Crown className="w-4 h-4" />
+              <span>VINH DANH TOP BÌNH LUẬN: BÀI #{currentPromptIndex + 1}/3</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {/* Auto countdown */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 font-bold uppercase hidden md:inline">Tự chuyển sau:</span>
+              <div className="px-3 py-1.5 rounded-xl border-2 border-black font-mono font-black text-lg bg-cyber-yellow text-black shadow-[2px_2px_0px_#000]">
+                {revealTimer}s
+              </div>
+            </div>
+
+            {/* Manual Advance Button */}
+            <button
+              onClick={handleAdvanceFromPostReveal}
+              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-black font-black text-sm rounded-xl border-2 border-black shadow-[3px_3px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition cursor-pointer"
+            >
+              <span>{isLastPost ? '🏆 Xem Tổng Kết Vòng 1 ➔' : `Sang Bài Phốt #${currentPromptIndex + 2} ➔`}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Situation reminder */}
+        <div className="bg-slate-900/90 border-2 border-slate-700 rounded-xl px-4 py-2 text-center text-xs md:text-sm text-slate-300 font-bold my-2 shrink-0">
+          <span className="text-cyber-yellow font-black">Chủ đề: </span>
+          &ldquo;{currentPrompt.situation}&rdquo;
+        </div>
+
+        {/* Top 3 Spotlight Cards */}
+        <div className="flex-1 my-auto flex items-center justify-center">
+          {top3.length === 0 ? (
+            <div className="text-center p-8 bg-slate-900/60 rounded-2xl border-2 border-slate-700">
+              <span className="text-5xl mb-2 block">🤷</span>
+              <h3 className="text-xl font-black text-white">Chưa có bình luận nào cho bài này!</h3>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full max-w-5xl">
+              {top3.map((comment, idx) => {
+                const avatar = getAvatarById(comment.avatarId || 'keyboard_warrior');
+                const SvgComp = avatar.SvgComponent;
+                const isTop1 = idx === 0;
+                const isTop2 = idx === 1;
+                const isTop3 = idx === 2;
+
+                const borderCol = isTop1
+                  ? 'border-amber-400 shadow-[6px_6px_0px_#FFD166]'
+                  : isTop2
+                  ? 'border-slate-300 shadow-[4px_4px_0px_#94A3B8]'
+                  : 'border-amber-700 shadow-[4px_4px_0px_#C2410C]';
+                const medalBg = isTop1 ? 'bg-amber-400 text-black' : isTop2 ? 'bg-slate-300 text-black' : 'bg-amber-700 text-white';
+                const bonusPts = isTop1 ? '+1,000' : isTop2 ? '+600' : '+300';
+
+                return (
+                  <div
+                    key={comment.id || idx}
+                    className={`bg-[#141A29] border-3 rounded-3xl p-5 flex flex-col justify-between transition-all transform ${borderCol} ${
+                      isTop1 ? 'md:-translate-y-3 scale-103' : ''
+                    }`}
+                  >
+                    <div>
+                      {/* Rank Medal */}
+                      <div className="flex items-center justify-between mb-3">
+                        <span className={`px-3 py-1 font-black text-xs uppercase rounded-xl border-2 border-black flex items-center gap-1.5 ${medalBg}`}>
+                          {isTop1 ? <Crown className="w-4 h-4" /> : <Award className="w-4 h-4" />}
+                          <span>HẠNG #{idx + 1}</span>
+                        </span>
+                        <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono font-black text-xs rounded-lg">
+                          {bonusPts} PTS
+                        </span>
+                      </div>
+
+                      {/* Author */}
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-12 h-12 rounded-2xl bg-black border-2 border-black flex items-center justify-center shrink-0">
+                          <SvgComp size={40} />
+                        </div>
+                        <div className="truncate">
+                          <div className="font-black text-base text-white truncate">
+                            {comment.authorName}
+                          </div>
+                          <div className="text-xs text-cyber-yellow font-bold truncate">
+                            {avatar.name}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Comment quote */}
+                      <p className="text-base md:text-lg font-black text-white italic leading-snug mb-4">
+                        &ldquo;{comment.text}&rdquo;
+                      </p>
+                    </div>
+
+                    {/* Reactions received */}
+                    <div className="grid grid-cols-3 gap-2 pt-3 border-t-2 border-slate-800 text-center">
+                      <div className="py-1 bg-rose-500/20 border border-rose-500/40 rounded-xl text-rose-300 font-black text-xs">
+                        ❤️ {comment.reactions?.heart || 0}
+                      </div>
+                      <div className="py-1 bg-amber-500/20 border border-amber-500/40 rounded-xl text-amber-300 font-black text-xs">
+                        🍅 {comment.reactions?.tomato || 0}
+                      </div>
+                      <div className="py-1 bg-cyan-500/20 border border-cyan-500/40 rounded-xl text-cyan-300 font-black text-xs">
+                        🧱 {comment.reactions?.brick || 0}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom footer */}
+        <div className="text-center text-xs text-slate-400 font-bold shrink-0">
+          💡 Điểm thưởng Top cmt và tương tác đã được cộng trực tiếp vào tổng điểm của người chơi
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // RENDER PHASE 4: TOP TRENDING REVEAL & PODIUM
   // ============================================================
   const top1 = sortedComments[0];
   const top2 = sortedComments[1];

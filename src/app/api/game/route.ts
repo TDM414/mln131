@@ -408,6 +408,14 @@ export async function POST(req: NextRequest) {
       const targetPhase = payload.phase;
       room.currentRoundPhase = targetPhase;
 
+      // Round 1 Server-authoritative phase logic
+      if (room.status === 'ROUND_1') {
+        room.round1State.phase = targetPhase as any;
+        if (typeof payload?.currentPromptIndex === 'number') {
+          room.round1State.currentPromptIndex = payload.currentPromptIndex;
+        }
+      }
+
       // Round 2 Server-authoritative phase logic
       if (room.status === 'ROUND_2') {
         room.round2State.phase = targetPhase as any;
