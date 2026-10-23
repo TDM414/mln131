@@ -77,7 +77,7 @@ function MobileControllerContent() {
   // Local ink debuff state
   const [inkWipesLeft, setInkWipesLeft] = useState<number>(0);
 
-  // Restore saved session from localStorage on mount
+  // Restore saved session from localStorage on mount (always show name setup screen first)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedId = localStorage.getItem('np_player_id');
@@ -88,10 +88,6 @@ function MobileControllerContent() {
         setPlayerId(savedId);
         setPlayerName(savedName);
         if (savedAvatar) setSelectedAvatarId(savedAvatar);
-        setIsJoined(true);
-
-        sync.setRoom(roomCode);
-        sync.joinRoom(savedId, savedName, savedAvatar || 'keyboard_warrior');
       } else {
         const newId = 'p_' + Math.random().toString(36).substring(2, 9);
         setPlayerId(newId);
@@ -99,6 +95,8 @@ function MobileControllerContent() {
         setPlayerName(randomName);
         setSelectedAvatarId(getRandomAvatar().id);
       }
+      // Always show Name & Avatar setup screen first!
+      setIsJoined(false);
     }
   }, [roomCode]);
 
@@ -367,10 +365,7 @@ function MobileControllerContent() {
 
           <button
             onClick={() => {
-              if (typeof window !== 'undefined') {
-                localStorage.removeItem('np_player_id');
-                setIsJoined(false);
-              }
+              setIsJoined(false);
             }}
             className="text-[9px] text-slate-400 hover:text-white px-1.5 py-1 bg-slate-800 rounded-lg border border-slate-700 cursor-pointer"
           >
