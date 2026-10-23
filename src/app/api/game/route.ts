@@ -239,6 +239,7 @@ function getOrCreateRoom(roomCode: string): RoomSession {
       },
       createdAt: Date.now(),
       lastActive: Date.now(),
+      resetEpoch: Date.now(),
       hostLanIp: getHostLanIp(),
       availableIps: getAllHostLanIps(),
       // Legacy Boss state fields
@@ -283,6 +284,7 @@ export async function GET(req: NextRequest) {
       round3State: room.round3State,
       round4State: room.round4State,
       devBotConfig: room.devBotConfig,
+      resetEpoch: room.resetEpoch,
       hostLanIp: currentHostIp,
       availableIps: currentAvailableIps,
       state: room, // Full GameShowState for state-first clients
@@ -846,6 +848,7 @@ export async function POST(req: NextRequest) {
         isCorrect,
         score: pointsEarned,
         livesRemaining: nextLives,
+        questionIndex: qIdx,
       };
 
       // Compatibility
@@ -1146,6 +1149,7 @@ export async function POST(req: NextRequest) {
   else if (action === 'RESET_GAME') {
     room.status = 'LOBBY';
     room.currentRoundPhase = 'LOBBY_WAITING';
+    room.resetEpoch = payload?.resetEpoch || timestamp;
     room.round1State = createInitialRound1State();
     room.round2State = createInitialRound2State();
     room.round3State = createInitialRound3State();

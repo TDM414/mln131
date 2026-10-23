@@ -33,14 +33,18 @@ export function mergeMonotonicState<T extends Partial<GameShowState>>(
 ): T {
   if (!incoming) return prev;
 
-  // 1. Manual Reset: allows resetting back to LOBBY
-  if (isManualReset) {
+  // 1. Session / Epoch Reset: allows resetting back to LOBBY cleanly on F5 or Host reset
+  const isNewEpoch = Boolean(
+    incoming.resetEpoch && (!prev.resetEpoch || incoming.resetEpoch > prev.resetEpoch)
+  );
+  if (isManualReset || isNewEpoch) {
     return {
       ...prev,
       ...incoming,
       status: 'LOBBY',
       currentRoundPhase: 'LOBBY_WAITING',
-      players: incoming.players || prev.players,
+      players: incoming.players || prev.players || {},
+      resetEpoch: incoming.resetEpoch || Date.now(),
     } as T;
   }
 
@@ -100,20 +104,23 @@ export function mergeMonotonicState<T extends Partial<GameShowState>>(
     } as any;
   }
 
-  // 5. Monotonic Round 2 Guard
+  // 5. Monotonic Round 2 Guard (Question answers MUST reset when question advances)
   let mergedRound2 = prev.round2State ? { ...prev.round2State } : incoming.round2State ? { ...incoming.round2State } : undefined;
   if (incoming.round2State) {
+    const prevQIdx = prev.round2State?.currentQuestionIndex ?? 0;
+    const incQIdx = incoming.round2State.currentQuestionIndex ?? 0;
+    const isNewQuestion = incQIdx > prevQIdx;
+
     mergedRound2 = {
       ...(prev.round2State || {}),
       ...incoming.round2State,
-      currentQuestionIndex: Math.max(
-        prev.round2State?.currentQuestionIndex || 0,
-        incoming.round2State.currentQuestionIndex || 0
-      ),
-      answers: {
-        ...(prev.round2State?.answers || {}),
-        ...(incoming.round2State.answers || {}),
-      },
+      currentQuestionIndex: Math.max(prevQIdx, incQIdx),
+      answers: isNewQuestion
+        ? (incoming.round2State.answers || {})
+        : {
+            ...(prev.round2State?.answers || {}),
+            ...(incoming.round2State.answers || {}),
+          },
     } as any;
   }
 
@@ -134,24 +141,29 @@ export function mergeMonotonicState<T extends Partial<GameShowState>>(
     } as any;
   }
 
-  // 7. Monotonic Round 4 Guard
+  // 7. Monotonic Round 4 Guard (Per-question answers and skills MUST reset when advancing)
   let mergedRound4 = prev.round4State ? { ...prev.round4State } : incoming.round4State ? { ...incoming.round4State } : undefined;
   if (incoming.round4State) {
+    const prevQIdx = prev.round4State?.currentQuestionIndex ?? 0;
+    const incQIdx = incoming.round4State.currentQuestionIndex ?? 0;
+    const isNewQuestion = incQIdx > prevQIdx;
+
     mergedRound4 = {
       ...(prev.round4State || {}),
       ...incoming.round4State,
-      currentQuestionIndex: Math.max(
-        prev.round4State?.currentQuestionIndex || 0,
-        incoming.round4State.currentQuestionIndex || 0
-      ),
-      playerAnswers: {
-        ...(prev.round4State?.playerAnswers || {}),
-        ...(incoming.round4State.playerAnswers || {}),
-      },
-      queuedSkills: {
-        ...(prev.round4State?.queuedSkills || {}),
-        ...(incoming.round4State.queuedSkills || {}),
-      },
+      currentQuestionIndex: Math.max(prevQIdx, incQIdx),
+      playerAnswers: isNewQuestion
+        ? (incoming.round4State.playerAnswers || {})
+        : {
+            ...(prev.round4State?.playerAnswers || {}),
+            ...(incoming.round4State.playerAnswers || {}),
+          },
+      queuedSkills: isNewQuestion
+        ? (incoming.round4State.queuedSkills || {})
+        : {
+            ...(prev.round4State?.queuedSkills || {}),
+            ...(incoming.round4State.queuedSkills || {}),
+          },
     } as any;
   }
 

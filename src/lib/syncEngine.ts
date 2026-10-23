@@ -344,8 +344,8 @@ class RealtimeSyncEngine {
     await this.sendAction('HOST_UPDATE_STATE', patch);
   }
 
-  async resetGame() {
-    await this.sendAction('RESET_GAME', {});
+  async resetGame(payload: { resetEpoch?: number } = {}) {
+    await this.sendAction('RESET_GAME', { resetEpoch: payload.resetEpoch || Date.now(), ...payload });
   }
 
   // ==========================================

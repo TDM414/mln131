@@ -122,9 +122,9 @@ export default function Round2Play({
     setTimeLeftMs(10000);
     questionStartTimeRef.current = Date.now();
 
-    // Check if player has already submitted according to state
-    if (round2State?.answers?.[playerId]) {
-      const existing = round2State.answers[playerId];
+    // Check if player has already submitted according to state for THIS specific question
+    const existing = round2State?.answers?.[playerId];
+    if (existing && existing.questionIndex === currentQuestionIndex) {
       setHasSubmitted(true);
       submittedRef.current = true;
       setLockedChoice({

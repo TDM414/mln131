@@ -106,6 +106,24 @@ export default function HostProjectorPage() {
   // Reset guard ref to allow manual reset to LOBBY
   const isResettingRef = useRef<boolean>(false);
 
+  // On Host page load / F5 reload: Automatically wipe session back to LOBBY for a fresh game
+  useEffect(() => {
+    isResettingRef.current = true;
+    const epoch = Date.now();
+    sync.setRoom(roomCode);
+    sync.resetGame({ resetEpoch: epoch });
+    setGameState((prev) => ({
+      ...prev,
+      status: 'LOBBY',
+      currentRoundPhase: 'LOBBY_WAITING',
+      resetEpoch: epoch,
+    }));
+    const timer = setTimeout(() => {
+      isResettingRef.current = false;
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Sync Engine Setup
   useEffect(() => {
     sync.setRoom(roomCode);
@@ -184,12 +202,14 @@ export default function HostProjectorPage() {
   const handleResetGame = () => {
     isResettingRef.current = true;
     sound.playCorrectChime();
+    const epoch = Date.now();
     setGameState((prev) => ({
       ...prev,
       status: 'LOBBY',
       currentRoundPhase: 'LOBBY_WAITING',
+      resetEpoch: epoch,
     }));
-    sync.resetGame();
+    sync.resetGame({ resetEpoch: epoch });
     setTimeout(() => {
       isResettingRef.current = false;
     }, 2500);

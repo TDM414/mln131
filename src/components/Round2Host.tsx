@@ -162,16 +162,20 @@ export default function Round2Host({
     };
   }, [phase, currentQuestionIndex]);
 
-  // Early explosion if all active players submitted
+  // Early explosion if all active players submitted (with 1.5s grace period so questions never auto-explode on transition)
   useEffect(() => {
-    if (phase === 'QUESTION_ACTIVE' && activePlayers.length > 0 && answeredCount >= activePlayers.length) {
-      // Small 250ms buffer to give visual confirmation
+    if (
+      phase === 'QUESTION_ACTIVE' &&
+      activePlayers.length > 0 &&
+      answeredCount >= activePlayers.length &&
+      timeLeftMs < 8500 // Must have run for at least 1.5s
+    ) {
       const earlyTimeout = setTimeout(() => {
         handleTriggerExplosionAndReveal();
-      }, 250);
+      }, 350);
       return () => clearTimeout(earlyTimeout);
     }
-  }, [answeredCount, activePlayers.length, phase]);
+  }, [answeredCount, activePlayers.length, phase, timeLeftMs]);
 
   // Trigger bomb explosion and transition to REVEAL phase
   const handleTriggerExplosionAndReveal = useCallback(() => {
@@ -239,6 +243,12 @@ export default function Round2Host({
     const nextIdx = currentQuestionIndex + 1;
     if (nextIdx < questions.length) {
       sound.playCorrectChime();
+      setTimeLeftMs(10000);
+      setIsExploding(false);
+      timerStartRef.current = Date.now();
+      if (state.round2State) {
+        state.round2State.answers = {};
+      }
       sync.hostUpdateState({
         round2State: {
           ...state.round2State,
@@ -248,7 +258,7 @@ export default function Round2Host({
           questions,
         },
       });
-      sync.setRoundPhase('QUESTION_ACTIVE');
+      sync.setRoundPhase('QUESTION_ACTIVE', { questionIndex: nextIdx });
     } else {
       // Final Round 2 Summary
       sound.playVictoryFanfare();

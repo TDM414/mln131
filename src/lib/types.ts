@@ -209,6 +209,7 @@ export interface FactCapAnswer {
   isCorrect: boolean;
   score: number;
   livesRemaining?: number;
+  questionIndex?: number;
 }
 
 export type MiniGameType =
@@ -486,6 +487,7 @@ export interface GameShowState {
   devBotConfig: DevBotConfig;
   hostLanIp?: string;
   availableIps?: { name: string; ip: string }[];
+  resetEpoch?: number;
 }
 
 export interface GameEvent {
